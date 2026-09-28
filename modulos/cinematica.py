@@ -1033,6 +1033,427 @@ def resolver_muv():
             
     pausar()
 
+# ============================================================
+# DUAS PARTÍCULAS
+# ============================================================
+
+def ler_particula(numero):
+    """
+    Lê os dados de uma partícula.
+
+    A partícula pode ser definida por:
+    x(t), v(t) ou a(t).
+
+    Retorna:
+    x(t), v(t), a(t)
+    """
+
+    print(
+        "\n"
+        + "-" * 60
+    )
+
+    print(
+        f"PARTÍCULA {numero}"
+    )
+
+    print(
+        "-" * 60
+    )
+
+    tipo = escolher_opcao(
+
+        "\nQual função é conhecida?",
+
+        {
+            "x":
+                "Posição x(t)",
+
+            "v":
+                "Velocidade v(t)",
+
+            "a":
+                "Aceleração a(t)",
+        }
+    )
+
+    conhecida = ler_expressao(
+        tipo
+    )
+
+    t0 = ler_float(
+        "Tempo inicial t0 (s): "
+    )
+
+    x0 = None
+    v0 = None
+
+    if tipo == "v":
+
+        x0 = ler_float(
+            f"Posição x({t0:g}) (m): "
+        )
+
+    elif tipo == "a":
+
+        x0 = ler_float(
+            f"Posição x({t0:g}) (m): "
+        )
+
+        v0 = ler_float(
+            f"Velocidade v({t0:g}) (m/s): "
+        )
+
+    return construir_movimento(
+        tipo,
+        conhecida,
+        t0=t0,
+        x0=x0,
+        v0=v0
+    )
+
+def filtrar_solucoes_fisicas(
+    solucoes,
+    t_inicial,
+    t_final
+):
+    """
+    Mantém apenas soluções:
+
+    - reais;
+    - numéricas;
+    - dentro do intervalo escolhido.
+    """
+
+    validas = []
+
+    for solucao in solucoes:
+
+        solucao_numerica = sp.N(
+            solucao
+        )
+
+        if solucao_numerica.is_real is False:
+            continue
+
+        try:
+
+            valor = float(
+                solucao_numerica
+            )
+
+        except (
+            TypeError,
+            ValueError
+        ):
+
+            continue
+
+        if (
+            t_inicial
+            <= valor
+            <= t_final
+        ):
+
+            validas.append(
+                valor
+            )
+
+    validas.sort()
+
+    return validas
+
+def resolver_duas_particulas():
+
+    print(
+        "\n"
+        + "=" * 60
+    )
+
+    print(
+        "MOVIMENTO DE DUAS PARTÍCULAS"
+    )
+
+    print(
+        "=" * 60
+    )
+
+    try:
+
+        (
+            x1,
+            v1,
+            a1
+        ) = ler_particula(1)
+
+        (
+            x2,
+            v2,
+            a2
+        ) = ler_particula(2)
+
+    except Exception as erro:
+
+        print(
+            f"\nErro ao construir "
+            f"o movimento: {erro}"
+        )
+
+        pausar()
+
+        return
+
+    print(
+        "\n"
+        + "=" * 60
+    )
+
+    print(
+        "FUNÇÕES OBTIDAS"
+    )
+
+    print(
+        "=" * 60
+    )
+
+    print(
+        "\nPartícula 1:"
+    )
+
+    print(
+        f"x1(t) = {sp.sstr(x1)}"
+    )
+
+    print(
+        f"v1(t) = {sp.sstr(v1)}"
+    )
+
+    print(
+        f"a1(t) = {sp.sstr(a1)}"
+    )
+
+    print(
+        "\nPartícula 2:"
+    )
+
+    print(
+        f"x2(t) = {sp.sstr(x2)}"
+    )
+
+    print(
+        f"v2(t) = {sp.sstr(v2)}"
+    )
+
+    print(
+        f"a2(t) = {sp.sstr(a2)}"
+    )
+
+    evento = escolher_opcao(
+
+        "\nO que deseja encontrar?",
+
+        {
+            "1":
+                "Quando possuem a mesma posição",
+
+            "2":
+                "Quando possuem a mesma velocidade",
+        }
+    )
+
+    t_inicial = ler_float(
+        "\nTempo inicial da busca (s): "
+    )
+
+    t_final = ler_float(
+        "Tempo final da busca (s): "
+    )
+
+    if (
+        t_final
+        <= t_inicial
+    ):
+
+        print(
+            "\nIntervalo inválido."
+        )
+
+        pausar()
+
+        return
+
+    if evento == "1":
+
+        equacao = sp.Eq(
+            x1,
+            x2
+        )
+
+        grandeza1 = x1
+        grandeza2 = x2
+
+        ylabel = (
+            "Posição (m)"
+        )
+
+        titulo = (
+            "Posição das duas partículas"
+        )
+
+    else:
+
+        equacao = sp.Eq(
+            v1,
+            v2
+        )
+
+        grandeza1 = v1
+        grandeza2 = v2
+
+        ylabel = (
+            "Velocidade (m/s)"
+        )
+
+        titulo = (
+            "Velocidade das duas partículas"
+        )
+
+    solucoes = sp.solve(
+        equacao,
+        tempo
+    )
+
+    solucoes_validas = (
+        filtrar_solucoes_fisicas(
+            solucoes,
+            t_inicial,
+            t_final
+        )
+    )
+
+    print(
+        "\n"
+        + "=" * 60
+    )
+
+    print(
+        "RESULTADO"
+    )
+
+    print(
+        "=" * 60
+    )
+
+    if not solucoes_validas:
+
+        print(
+            "\nNenhuma solução física "
+            "foi encontrada no intervalo."
+        )
+
+    else:
+
+        for instante in solucoes_validas:
+
+            valor1 = float(
+
+                grandeza1.subs(
+                    tempo,
+                    instante
+                )
+            )
+
+            print(
+                f"\nt = "
+                f"{instante:.8g} s"
+            )
+
+            print(
+                f"valor comum = "
+                f"{valor1:.8g}"
+            )
+
+    # ========================================================
+    # GRÁFICO
+    # ========================================================
+
+    if ler_sim_nao(
+        "\nDeseja gerar o gráfico?"
+    ):
+
+        valores_t = np.linspace(
+            t_inicial,
+            t_final,
+            1000
+        )
+
+        y1 = avaliar_expressao(
+            grandeza1,
+            valores_t
+        )
+
+        y2 = avaliar_expressao(
+            grandeza2,
+            valores_t
+        )
+
+        plt.figure(
+            figsize=(9, 5)
+        )
+
+        plt.plot(
+            valores_t,
+            y1,
+            label="Partícula 1"
+        )
+
+        plt.plot(
+            valores_t,
+            y2,
+            label="Partícula 2"
+        )
+
+        for instante in solucoes_validas:
+
+            valor = float(
+
+                grandeza1.subs(
+                    tempo,
+                    instante
+                )
+            )
+
+            plt.scatter(
+                instante,
+                valor
+            )
+
+            plt.axvline(
+                instante,
+                linestyle="--",
+                alpha=0.5
+            )
+
+        plt.xlabel(
+            "Tempo (s)"
+        )
+
+        plt.ylabel(
+            ylabel
+        )
+
+        plt.title(
+            titulo
+        )
+
+        plt.grid()
+
+        plt.legend()
+
+        plt.show()
+
+    pausar()
+
 def menu_cinematica():
 
     while True:
@@ -1054,16 +1475,20 @@ def menu_cinematica():
 
             "\nComo o problema fornece os dados?",
 
-            {
+           {
                 "1":
                     "Valores numéricos — MUV",
 
                 "2":
                     "Função x(t), v(t) ou a(t)",
 
+                "3":
+                    "Duas partículas",
+
                 "0":
                     "Voltar",
             }
+            
         )
 
         if opcao == "0":
@@ -1077,3 +1502,7 @@ def menu_cinematica():
         elif opcao == "2":
 
             resolver_funcao_conhecida()
+        
+        elif opcao == "3":
+
+            resolver_duas_particulas()

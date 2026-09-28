@@ -30,7 +30,7 @@ def main():
 
             {
                 "1":
-                    "Cinemática 1D — MUV",
+                    "Cinemática 1D",
 
                 "0":
                     "Sair",
