@@ -106,6 +106,50 @@ def escolher_opcao(
             "Opção inválida."
         )
 
+def ler_sim_nao(
+    mensagem,
+    padrao=True
+):
+    """
+    Faz uma pergunta de sim/não.
+
+    padrao=True:
+        ENTER sozinho significa SIM.
+
+    padrao=False:
+        ENTER sozinho significa NÃO.
+    """
+
+    if padrao:
+        sufixo = " [S/n]: "
+    else:
+        sufixo = " [s/N]: "
+
+    while True:
+
+        resposta = input(
+            mensagem + sufixo
+        ).strip().lower()
+
+        if resposta == "":
+            return padrao
+
+        if resposta in (
+            "s",
+            "sim"
+        ):
+            return True
+
+        if resposta in (
+            "n",
+            "nao",
+            "não"
+        ):
+            return False
+
+        print(
+            "Responda s ou n."
+        )
 
 def pausar():
 

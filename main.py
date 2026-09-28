@@ -3,7 +3,7 @@ from core.entrada import (
 )
 
 from modulos.cinematica import (
-    resolver_muv
+    menu_cinematica
 )
 
 
@@ -47,7 +47,7 @@ def main():
 
         elif opcao == "1":
 
-            resolver_muv()
+            menu_cinematica()
 
 
 if __name__ == "__main__":
