@@ -1,16 +1,36 @@
-import numpy as np
-import matplotlib.pyplot as plt
 import sympy as sp
 
 from core.entrada import (
     escolher_opcao,
     ler_float,
     ler_float_opcional,
+    ler_int,
     ler_sim_nao,
     pausar,
 )
-
 from core.solver import resolver_equacoes_iterativamente
+from modulos.eventos_cinematica import (
+    aceleracao_media,
+    avaliar_estado,
+    comparar_movimentos,
+    distancia_e_velocidade_escalar_media,
+    deslocamento_e_velocidade_media,
+    extremos,
+    intervalos_de_sinal,
+    resolver_evento,
+)
+from modulos.graficos_cinematica import (
+    gerar_grafico_comparativo,
+    gerar_graficos_movimento,
+)
+from modulos.movimento_1d import (
+    Movimento1D,
+    TrechoMovimento,
+    construir_movimento,
+    criar_movimento_um_trecho,
+    numero_exato,
+    tempo,
+)
 
 
 # ============================================================
@@ -22,11 +42,7 @@ x = sp.symbols("x", real=True)
 v0 = sp.symbols("v0", real=True)
 v = sp.symbols("v", real=True)
 a = sp.symbols("a", real=True)
-t = sp.symbols("t", real=True)
-
-# Usamos o mesmo símbolo t também na parte de funções.
-tempo = t
-tau = sp.symbols("tau", real=True)
+t = tempo
 
 SIMBOLOS = {
     "x0": x0,
@@ -57,18 +73,7 @@ EQUACOES = [
 ]
 
 
-# ============================================================
-# VALIDAÇÃO DOS DADOS NUMÉRICOS
-# ============================================================
-
 def validar_dados_muv(conhecidos, tolerancia=1e-8):
-    """
-    Verifica se os valores fornecidos pelo usuário são compatíveis
-    com as equações do MUV.
-
-    Uma equação só é testada quando todas as grandezas que aparecem
-    nela já foram informadas pelo usuário.
-    """
     substituicoes = {
         SIMBOLOS[nome]: valor
         for nome, valor in conhecidos.items()
@@ -78,19 +83,12 @@ def validar_dados_muv(conhecidos, tolerancia=1e-8):
     inconsistencias = []
 
     for nome_equacao, expressao in EQUACOES:
-        simbolos_faltantes = (
-            expressao.free_symbols
-            - set(substituicoes.keys())
-        )
+        faltantes = expressao.free_symbols - set(substituicoes.keys())
 
-        if simbolos_faltantes:
+        if faltantes:
             continue
 
-        residual = float(
-            sp.N(
-                expressao.subs(substituicoes)
-            )
-        )
+        residual = float(sp.N(expressao.subs(substituicoes)))
 
         if abs(residual) > tolerancia:
             inconsistencias.append(
@@ -104,85 +102,12 @@ def validar_dados_muv(conhecidos, tolerancia=1e-8):
 
 
 # ============================================================
-# GRÁFICOS DO MUV
+# ENTRADA DE EXPRESSÕES E MODELOS DE MOVIMENTO
 # ============================================================
 
-def gerar_graficos_muv(valores):
-    """
-    Gera os gráficos x(t), v(t) e a(t) para MUV.
-    Requer x0, v0, a e t.
-    """
-    x0_val = valores["x0"]
-    v0_val = valores["v0"]
-    a_val = valores["a"]
-    tempo_final = valores["t"]
-
-    tempos = np.linspace(0, tempo_final, 1000)
-
-    posicoes = (
-        x0_val
-        + v0_val * tempos
-        + 0.5 * a_val * tempos**2
-    )
-
-    velocidades = (
-        v0_val
-        + a_val * tempos
-    )
-
-    aceleracoes = np.full_like(
-        tempos,
-        a_val,
-        dtype=float,
-    )
-
-    graficos = [
-        (
-            posicoes,
-            "Posição x Tempo",
-            "Posição (m)",
-        ),
-        (
-            velocidades,
-            "Velocidade x Tempo",
-            "Velocidade (m/s)",
-        ),
-        (
-            aceleracoes,
-            "Aceleração x Tempo",
-            "Aceleração (m/s²)",
-        ),
-    ]
-
-    for valores_y, titulo, ylabel in graficos:
-        plt.figure(figsize=(9, 5))
-        plt.plot(tempos, valores_y)
-        plt.axhline(0, linewidth=0.8)
-        plt.xlabel("Tempo (s)")
-        plt.ylabel(ylabel)
-        plt.title(titulo)
-        plt.grid(True, alpha=0.3)
-        plt.tight_layout()
-        plt.show()
-
-
-# ============================================================
-# CINEMÁTICA SIMBÓLICA: x(t), v(t), a(t)
-# ============================================================
 
 def ler_expressao(nome):
-    """
-    Lê uma expressão matemática em função de t.
-
-    Exemplos:
-        4*t**2 + 3*t
-        -8*t
-        20 - 4*t**2
-        sin(t)
-        3*cos(2*t)
-
-    Também aceita ^ e converte para **.
-    """
+    """Lê expressão simbólica em função de t."""
     texto = input(
         f"\nDigite {nome}(t) em função de t.\n"
         f"Exemplo: 4*t**2 + 3*t - 2\n"
@@ -199,220 +124,571 @@ def ler_expressao(nome):
         "sqrt": sp.sqrt,
         "exp": sp.exp,
         "pi": sp.pi,
+        "E": sp.E,
     }
 
     try:
-        expressao = sp.sympify(
-            texto,
-            locals=permitidas,
-        )
-        return sp.simplify(expressao)
-
+        expressao = sp.sympify(texto, locals=permitidas, rational=True)
     except (sp.SympifyError, SyntaxError, TypeError) as erro:
+        raise ValueError("Não foi possível interpretar a função.") from erro
+
+    simbolos_extras = expressao.free_symbols - {tempo}
+
+    if simbolos_extras:
+        nomes = ", ".join(sorted(str(s) for s in simbolos_extras))
         raise ValueError(
-            "Não foi possível interpretar a função."
-        ) from erro
-
-
-def construir_movimento(
-    tipo,
-    conhecida,
-    t0=0.0,
-    x0=None,
-    v0=None,
-):
-    """
-    Constrói x(t), v(t) e a(t).
-
-    Se x(t) é conhecida:
-        v = dx/dt
-        a = dv/dt
-
-    Se v(t) é conhecida:
-        a = dv/dt
-        x = x(t0) + integral de v
-
-    Se a(t) é conhecida:
-        v = v(t0) + integral de a
-        x = x(t0) + integral de v
-    """
-    if tipo == "x":
-        x_expr = sp.simplify(conhecida)
-        v_expr = sp.simplify(
-            sp.diff(x_expr, tempo)
-        )
-        a_expr = sp.simplify(
-            sp.diff(v_expr, tempo)
+            "A expressão deve depender apenas de t. "
+            f"Símbolos não reconhecidos: {nomes}."
         )
 
-    elif tipo == "v":
-        if x0 is None:
-            raise ValueError(
-                "Para integrar v(t), é necessário conhecer x(t0)."
-            )
+    return sp.simplify(expressao)
 
-        v_expr = sp.simplify(conhecida)
-        a_expr = sp.simplify(
-            sp.diff(v_expr, tempo)
-        )
 
-        v_tau = v_expr.subs(
-            tempo,
-            tau,
-        )
+def ler_intervalo(mensagem="Intervalo físico de validade"):
+    print(f"\n{mensagem}")
+    t_inicial = ler_float("Tempo inicial (s): ")
+    t_final = ler_float("Tempo final (s): ")
 
-        x_expr = sp.simplify(
-            x0
-            + sp.integrate(
-                v_tau,
-                (tau, t0, tempo),
-            )
-        )
+    if t_final <= t_inicial:
+        raise ValueError("O tempo final deve ser maior que o tempo inicial.")
+
+    return t_inicial, t_final
+
+
+def _ler_condicoes_integracao(tipo, t0, x_padrao=None, v_padrao=None):
+    x0_val = None
+    v0_val = None
+
+    if tipo == "v":
+        if x_padrao is not None and ler_sim_nao(
+            f"Usar continuidade: x({t0:g}) = {sp.sstr(x_padrao)} m?",
+            padrao=True,
+        ):
+            x0_val = x_padrao
+        else:
+            x0_val = ler_float(f"Posição x({t0:g}) (m): ")
 
     elif tipo == "a":
-        if x0 is None or v0 is None:
-            raise ValueError(
-                "Para integrar a(t), é necessário conhecer "
-                "x(t0) e v(t0)."
-            )
+        if x_padrao is not None and ler_sim_nao(
+            f"Usar continuidade: x({t0:g}) = {sp.sstr(x_padrao)} m?",
+            padrao=True,
+        ):
+            x0_val = x_padrao
+        else:
+            x0_val = ler_float(f"Posição x({t0:g}) (m): ")
 
-        a_expr = sp.simplify(conhecida)
+        if v_padrao is not None and ler_sim_nao(
+            f"Usar continuidade: v({t0:g}) = {sp.sstr(v_padrao)} m/s?",
+            padrao=True,
+        ):
+            v0_val = v_padrao
+        else:
+            v0_val = ler_float(f"Velocidade v({t0:g}) (m/s): ")
 
-        a_tau = a_expr.subs(
-            tempo,
-            tau,
-        )
+    return x0_val, v0_val
 
-        v_expr = sp.simplify(
-            v0
-            + sp.integrate(
-                a_tau,
-                (tau, t0, tempo),
-            )
-        )
 
-        v_tau = v_expr.subs(
-            tempo,
-            tau,
-        )
+def definir_movimento_funcao(nome="Partícula"):
+    print("\n" + "=" * 60)
+    print(f"DEFINIR MOVIMENTO — {nome}")
+    print("=" * 60)
 
-        x_expr = sp.simplify(
-            x0
-            + sp.integrate(
-                v_tau,
-                (tau, t0, tempo),
-            )
-        )
-
-    else:
-        raise ValueError(
-            "Tipo deve ser x, v ou a."
-        )
-
-    return (
-        sp.simplify(x_expr),
-        sp.simplify(v_expr),
-        sp.simplify(a_expr),
+    tipo = escolher_opcao(
+        "\nQual função o problema fornece?",
+        {
+            "x": "Posição x(t)",
+            "v": "Velocidade v(t)",
+            "a": "Aceleração a(t)",
+        },
     )
 
+    conhecida = ler_expressao(tipo)
+    t_inicial, t_final = ler_intervalo()
 
-def avaliar_expressao(expressao, valores_t):
-    """
-    Converte uma expressão SymPy em função NumPy e a avalia
-    para vários valores de tempo.
-    """
-    funcao = sp.lambdify(
-        tempo,
-        expressao,
-        modules=["numpy"],
-    )
+    t0 = t_inicial
+    x0_val = None
+    v0_val = None
 
-    resultado = np.asarray(
-        funcao(valores_t),
-        dtype=float,
-    )
-
-    # Expressões constantes, como a(t)=2, retornam um escalar.
-    if resultado.ndim == 0:
-        resultado = np.full_like(
-            valores_t,
-            float(resultado),
-            dtype=float,
+    if tipo in ("v", "a"):
+        print(
+            "\nPara integrar, precisamos das condições iniciais. "
+            "Por padrão elas serão dadas no início do domínio."
         )
+        t0_lido = ler_float_opcional(
+            f"Instante das condições iniciais t0 [ENTER = {t_inicial:g} s]: "
+        )
+        t0 = t_inicial if t0_lido is None else t0_lido
 
-    return resultado
+        if not (t_inicial <= t0 <= t_final):
+            raise ValueError("t0 deve estar dentro do domínio físico informado.")
 
+        x0_val, v0_val = _ler_condicoes_integracao(tipo, t0)
 
-def gerar_graficos_funcoes(
-    x_expr,
-    v_expr,
-    a_expr,
-    t_inicial,
-    t_final,
-):
-    """
-    Gera os gráficos x(t), v(t) e a(t) para funções gerais.
-    """
-    valores_t = np.linspace(
+    return criar_movimento_um_trecho(
+        tipo,
+        conhecida,
         t_inicial,
         t_final,
-        1000,
+        t0=t0,
+        x0=x0_val,
+        v0=v0_val,
+        nome=nome,
     )
 
-    posicoes = avaliar_expressao(
-        x_expr,
-        valores_t,
+
+def definir_movimento_piecewise(nome="Partícula"):
+    print("\n" + "=" * 60)
+    print(f"MOVIMENTO POR TRECHOS — {nome}")
+    print("=" * 60)
+
+    quantidade = ler_int("\nNúmero de trechos: ", minimo=2)
+    inicio = ler_float("Tempo inicial do primeiro trecho (s): ")
+
+    trechos = []
+    x_fronteira = None
+    v_fronteira = None
+
+    for indice in range(quantidade):
+        print("\n" + "-" * 60)
+        print(f"TRECHO {indice + 1} DE {quantidade}")
+        print("-" * 60)
+        print(f"Início do trecho: t = {inicio:g} s")
+
+        fim = ler_float("Fim do trecho (s): ")
+
+        if fim <= inicio:
+            raise ValueError("O fim de cada trecho deve ser maior que o início.")
+
+        tipo = escolher_opcao(
+            "\nQual função é conhecida neste trecho?",
+            {
+                "x": "Posição x(t)",
+                "v": "Velocidade v(t)",
+                "a": "Aceleração a(t)",
+            },
+        )
+
+        conhecida = ler_expressao(tipo)
+        x0_val = None
+        v0_val = None
+
+        if tipo in ("v", "a"):
+            x0_val, v0_val = _ler_condicoes_integracao(
+                tipo,
+                inicio,
+                x_padrao=x_fronteira,
+                v_padrao=v_fronteira,
+            )
+
+        x_expr, v_expr, a_expr = construir_movimento(
+            tipo,
+            conhecida,
+            t0=inicio,
+            x0=x0_val,
+            v0=v0_val,
+        )
+
+        trecho = TrechoMovimento(
+            float(inicio),
+            float(fim),
+            x_expr,
+            v_expr,
+            a_expr,
+        )
+        trechos.append(trecho)
+
+        # Valores do lado esquerdo da próxima fronteira. Servem como
+        # condições sugeridas para manter continuidade entre trechos.
+        tb = numero_exato(fim)
+        x_fronteira = sp.simplify(x_expr.subs(tempo, tb))
+        v_fronteira = sp.simplify(v_expr.subs(tempo, tb))
+        inicio = fim
+
+    movimento = Movimento1D(trechos, nome=nome)
+    avisos = movimento.validar_continuidade()
+
+    if avisos:
+        print("\nATENÇÃO ÀS FRONTEIRAS DO MODELO:")
+
+        for aviso in avisos:
+            if aviso["tipo"] == "posicao":
+                print(
+                    f"- x(t) é descontínua em t={aviso['tempo']:g} s: "
+                    f"{aviso['esquerda']} -> {aviso['direita']}"
+                )
+            else:
+                print(
+                    f"- v(t) muda instantaneamente em t={aviso['tempo']:g} s: "
+                    f"{aviso['esquerda']} -> {aviso['direita']}"
+                )
+
+        print(
+            "Uma descontinuidade de posição normalmente indica um modelo "
+            "fisicamente inconsistente. Uma descontinuidade de velocidade "
+            "pode representar uma idealização impulsiva."
+        )
+
+    return movimento
+
+
+def definir_movimento_interativo(nome="Partícula"):
+    escolha = escolher_opcao(
+        f"\nComo deseja definir {nome}?",
+        {
+            "1": "Uma função x(t), v(t) ou a(t)",
+            "2": "Movimento por trechos (Piecewise)",
+        },
     )
 
-    velocidades = avaliar_expressao(
-        v_expr,
-        valores_t,
-    )
+    if escolha == "1":
+        return definir_movimento_funcao(nome)
 
-    aceleracoes = avaliar_expressao(
-        a_expr,
-        valores_t,
-    )
+    return definir_movimento_piecewise(nome)
 
-    graficos = [
-        (
-            posicoes,
-            "Posição x Tempo",
-            "Posição (m)",
-        ),
-        (
-            velocidades,
-            "Velocidade x Tempo",
-            "Velocidade (m/s)",
-        ),
-        (
-            aceleracoes,
-            "Aceleração x Tempo",
-            "Aceleração (m/s²)",
-        ),
-    ]
 
-    for valores_y, titulo, ylabel in graficos:
-        plt.figure(figsize=(9, 5))
-        plt.plot(valores_t, valores_y)
-        plt.axhline(0, linewidth=0.8)
-        plt.xlabel("Tempo (s)")
-        plt.ylabel(ylabel)
-        plt.title(titulo)
-        plt.grid(True, alpha=0.3)
-        plt.tight_layout()
-        plt.show()
+def mostrar_movimento(movimento):
+    print("\n" + "=" * 60)
+    print("MODELO DE MOVIMENTO")
+    print("=" * 60)
+    print(f"Domínio: {movimento.t_min:g} <= t <= {movimento.t_max:g} s")
+    print(f"x(t) = {sp.sstr(movimento.x)}")
+    print(f"v(t) = {sp.sstr(movimento.v)}")
+    print(f"a(t) = {sp.sstr(movimento.a)}")
 
 
 # ============================================================
-# INTERFACE: MUV NUMÉRICO
+# MENU DE PERGUNTAS FÍSICAS
 # ============================================================
+
+
+def _intervalo_busca(movimento):
+    print(
+        f"\nDomínio disponível: [{movimento.t_min:g}, {movimento.t_max:g}] s"
+    )
+    inicio = ler_float("Tempo inicial da análise (s): ")
+    fim = ler_float("Tempo final da análise (s): ")
+
+    if fim <= inicio:
+        raise ValueError("O tempo final deve ser maior que o inicial.")
+
+    return inicio, fim
+
+
+def _imprimir_solucoes_evento(resultado, unidade_t="s"):
+    if resultado["pontos"]:
+        print("\nInstantes encontrados:")
+        for valor in resultado["pontos"]:
+            print(f"- t = {valor:.10g} {unidade_t}")
+
+    if resultado["intervalos"]:
+        print("\nA condição é satisfeita durante o(s) intervalo(s):")
+        for intervalo in resultado["intervalos"]:
+            print(f"- {sp.sstr(intervalo)} s")
+
+    if not resultado["pontos"] and not resultado["intervalos"]:
+        print("\nNenhuma solução foi encontrada no intervalo.")
+
+    for mensagem in resultado.get("limitacoes", []):
+        print(f"\nLIMITAÇÃO DO MÉTODO: {mensagem}")
+
+
+def _acao_evento(movimento, grandeza, alvo, descricao):
+    try:
+        inicio, fim = _intervalo_busca(movimento)
+        resultado = resolver_evento(
+            movimento,
+            grandeza,
+            alvo,
+            inicio,
+            fim,
+        )
+    except ValueError as erro:
+        print(f"\nErro: {erro}")
+        return
+
+    print(f"\nCondição física: {descricao}")
+    _imprimir_solucoes_evento(resultado)
+
+
+def _acao_extremos(movimento, grandeza):
+    try:
+        inicio, fim = _intervalo_busca(movimento)
+        resultado = extremos(
+            movimento,
+            grandeza,
+            inicio,
+            fim,
+        )
+    except ValueError as erro:
+        print(f"\nErro: {erro}")
+        return
+
+    unidade = "m" if grandeza == "x" else "m/s"
+    nome = "posição" if grandeza == "x" else "velocidade"
+
+    print(f"\nExtremos globais de {nome} no intervalo:")
+
+    if resultado["minimo"]:
+        for item in resultado["minimo"]:
+            print(
+                f"- mínimo: {item['valor']:.10g} {unidade} "
+                f"em t={item['t']:.10g} s"
+            )
+
+    if resultado["maximo"]:
+        for item in resultado["maximo"]:
+            print(
+                f"- máximo: {item['valor']:.10g} {unidade} "
+                f"em t={item['t']:.10g} s"
+            )
+
+    for mensagem in resultado["limitacoes"]:
+        print(f"\nLIMITAÇÃO DO MÉTODO: {mensagem}")
+
+
+def _acao_medias(movimento):
+    try:
+        inicio, fim = _intervalo_busca(movimento)
+        resultado = deslocamento_e_velocidade_media(
+            movimento,
+            inicio,
+            fim,
+        )
+        a_media = aceleracao_media(movimento, inicio, fim)
+    except ValueError as erro:
+        print(f"\nErro: {erro}")
+        return
+
+    print(f"\nx(t1) = {resultado['x_inicial']:.10g} m")
+    print(f"x(t2) = {resultado['x_final']:.10g} m")
+    print(f"Deslocamento Δx = {resultado['deslocamento']:.10g} m")
+    print(
+        "Velocidade média = Δx/Δt = "
+        f"{resultado['velocidade_media']:.10g} m/s"
+    )
+    print(
+        "Aceleração média = Δv/Δt = "
+        f"{a_media:.10g} m/s²"
+    )
+
+
+def _acao_distancia(movimento):
+    try:
+        inicio, fim = _intervalo_busca(movimento)
+        resultado = distancia_e_velocidade_escalar_media(
+            movimento,
+            inicio,
+            fim,
+        )
+    except ValueError as erro:
+        print(f"\nErro: {erro}")
+        return
+
+    if resultado["limitacoes"]:
+        for mensagem in resultado["limitacoes"]:
+            print(f"\nLIMITAÇÃO DO MÉTODO: {mensagem}")
+        return
+
+    print(f"\nDistância percorrida = {resultado['distancia']:.10g} m")
+    print(
+        "Velocidade escalar média = distância/Δt = "
+        f"{resultado['velocidade_escalar_media']:.10g} m/s"
+    )
+
+    if resultado["pontos_retorno"]:
+        print("Pontos de inversão detectados (v=0):")
+        for instante in resultado["pontos_retorno"]:
+            print(f"- t = {instante:.10g} s")
+
+
+def _formatar_conjunto(conjunto):
+    return sp.sstr(sp.simplify(conjunto))
+
+
+def _acao_sinais(movimento):
+    try:
+        inicio, fim = _intervalo_busca(movimento)
+
+        for grandeza, nome in (("v", "velocidade"), ("a", "aceleração")):
+            resultado = intervalos_de_sinal(
+                movimento,
+                grandeza,
+                inicio,
+                fim,
+            )
+
+            print(f"\n{nome.upper()}:")
+
+            if resultado["positivos"]:
+                print("  > 0 em:")
+                for conjunto in resultado["positivos"]:
+                    print(f"    {_formatar_conjunto(conjunto)}")
+            else:
+                print("  > 0: nenhum intervalo identificado")
+
+            if resultado["negativos"]:
+                print("  < 0 em:")
+                for conjunto in resultado["negativos"]:
+                    print(f"    {_formatar_conjunto(conjunto)}")
+            else:
+                print("  < 0: nenhum intervalo identificado")
+
+            if resultado["zeros"]:
+                print("  = 0 em:")
+                for item in resultado["zeros"]:
+                    print(f"    {item}")
+
+            for mensagem in resultado["limitacoes"]:
+                print(f"  LIMITAÇÃO: {mensagem}")
+
+    except ValueError as erro:
+        print(f"\nErro: {erro}")
+
+
+def _acao_comparar(movimento1):
+    print("\nDefina a segunda partícula.")
+
+    try:
+        movimento2 = definir_movimento_interativo("Partícula 2")
+    except ValueError as erro:
+        print(f"\nErro ao construir a segunda partícula: {erro}")
+        return
+
+    mostrar_movimento(movimento2)
+
+    evento = escolher_opcao(
+        "\nO que deseja comparar?",
+        {
+            "1": "Quando possuem a mesma posição",
+            "2": "Quando possuem a mesma velocidade",
+        },
+    )
+
+    grandeza = "x" if evento == "1" else "v"
+
+    inicio_padrao = max(movimento1.t_min, movimento2.t_min)
+    fim_padrao = min(movimento1.t_max, movimento2.t_max)
+
+    print(
+        f"\nDomínio comum disponível: [{inicio_padrao:g}, {fim_padrao:g}] s"
+    )
+    inicio = ler_float("Tempo inicial da comparação (s): ")
+    fim = ler_float("Tempo final da comparação (s): ")
+
+    try:
+        resultado = comparar_movimentos(
+            movimento1,
+            movimento2,
+            grandeza,
+            inicio,
+            fim,
+        )
+    except ValueError as erro:
+        print(f"\nErro: {erro}")
+        return
+
+    _imprimir_solucoes_evento(resultado)
+
+    if ler_sim_nao("\nDeseja gerar o gráfico comparativo?", padrao=False):
+        gerar_grafico_comparativo(
+            movimento1,
+            movimento2,
+            grandeza,
+            resultado["inicio"],
+            resultado["fim"],
+            eventos=resultado["pontos"],
+        )
+
+
+def menu_perguntas_movimento(movimento):
+    while True:
+        print("\n" + "=" * 60)
+        print("O QUE DESEJA DESCOBRIR?")
+        print("=" * 60)
+
+        opcao = escolher_opcao(
+            "",
+            {
+                "1": "Avaliar x, v e a em um instante",
+                "2": "Quando a posição assume um valor",
+                "3": "Quando a velocidade assume um valor",
+                "4": "Quando a aceleração assume um valor",
+                "5": "Quando a partícula para",
+                "6": "Máximos e mínimos de posição",
+                "7": "Máximos e mínimos de velocidade",
+                "8": "Deslocamento e velocidade média em um intervalo",
+                "9": "Distância e velocidade escalar média",
+                "10": "Intervalos de sinal de v e a",
+                "11": "Comparar com outra partícula",
+                "12": "Gerar gráficos",
+                "0": "Voltar",
+            },
+        )
+
+        if opcao == "0":
+            return
+
+        if opcao == "1":
+            instante = ler_float("\nInstante t (s): ")
+
+            try:
+                estado = avaliar_estado(movimento, instante)
+                print(f"\nx = {sp.N(estado['x'], 10)} m")
+                print(f"v = {sp.N(estado['v'], 10)} m/s")
+                print(f"a = {sp.N(estado['a'], 10)} m/s²")
+            except ValueError as erro:
+                print(f"\nErro: {erro}")
+
+        elif opcao == "2":
+            alvo = ler_float("\nValor de posição procurado x (m): ")
+            _acao_evento(movimento, "x", alvo, f"x(t) = {alvo:g} m")
+
+        elif opcao == "3":
+            alvo = ler_float("\nValor de velocidade procurado v (m/s): ")
+            _acao_evento(movimento, "v", alvo, f"v(t) = {alvo:g} m/s")
+
+        elif opcao == "4":
+            alvo = ler_float("\nValor de aceleração procurado a (m/s²): ")
+            _acao_evento(movimento, "a", alvo, f"a(t) = {alvo:g} m/s²")
+
+        elif opcao == "5":
+            _acao_evento(movimento, "v", 0, "v(t) = 0")
+
+        elif opcao == "6":
+            _acao_extremos(movimento, "x")
+
+        elif opcao == "7":
+            _acao_extremos(movimento, "v")
+
+        elif opcao == "8":
+            _acao_medias(movimento)
+
+        elif opcao == "9":
+            _acao_distancia(movimento)
+
+        elif opcao == "10":
+            _acao_sinais(movimento)
+
+        elif opcao == "11":
+            _acao_comparar(movimento)
+
+        elif opcao == "12":
+            try:
+                inicio, fim = _intervalo_busca(movimento)
+                gerar_graficos_movimento(movimento, inicio, fim)
+            except ValueError as erro:
+                print(f"\nErro: {erro}")
+
+
+# ============================================================
+# MUV NUMÉRICO
+# ============================================================
+
 
 def resolver_muv():
     print("\n" + "=" * 60)
     print("MOVIMENTO UNIDIMENSIONAL — MUV")
     print("=" * 60)
-
     print(
         "\nInforme apenas as grandezas que conhece.\n"
         "Se não souber, pressione ENTER.\n"
@@ -430,30 +706,17 @@ def resolver_muv():
     conhecidos = {}
 
     for nome, mensagem in perguntas.items():
-        valor = ler_float_opcional(
-            mensagem
-        )
-
+        valor = ler_float_opcional(mensagem)
         if valor is not None:
             conhecidos[nome] = valor
 
-    # Antes de resolver, verificamos se os dados fornecidos
-    # já contradizem alguma equação do MUV.
-    inconsistencias = validar_dados_muv(
-        conhecidos
-    )
+    inconsistencias = validar_dados_muv(conhecidos)
 
     if inconsistencias:
         print("\n" + "=" * 60)
         print("DADOS INCOMPATÍVEIS")
         print("=" * 60)
-
-        print(
-            "\nOs valores fornecidos não satisfazem "
-            "o modelo de MUV."
-        )
-
-        print("\nEquações violadas:")
+        print("\nOs valores fornecidos não satisfazem o modelo de MUV.")
 
         for item in inconsistencias:
             print(
@@ -461,19 +724,13 @@ def resolver_muv():
                 f"(resíduo = {item['residual']:.6g})"
             )
 
-        print(
-            "\nRevise os dados do problema."
-        )
-
         pausar()
         return
 
-    valores, historico, ambiguidades = (
-        resolver_equacoes_iterativamente(
-            EQUACOES,
-            SIMBOLOS,
-            conhecidos,
-        )
+    valores, historico, ambiguidades = resolver_equacoes_iterativamente(
+        EQUACOES,
+        SIMBOLOS,
+        conhecidos,
     )
 
     unidades = {
@@ -489,56 +746,28 @@ def resolver_muv():
     print("RESULTADOS")
     print("=" * 60)
 
-    for nome in (
-        "x0",
-        "x",
-        "v0",
-        "v",
-        "a",
-        "t",
-    ):
+    for nome in ("x0", "x", "v0", "v", "a", "t"):
         if nome in valores:
-            origem = (
-                "informado"
-                if nome in conhecidos
-                else "calculado"
-            )
-
+            origem = "informado" if nome in conhecidos else "calculado"
             print(
-                f"{nome:>2} = "
-                f"{valores[nome]:.8g} "
-                f"{unidades[nome]} "
-                f"[{origem}]"
+                f"{nome:>2} = {valores[nome]:.8g} "
+                f"{unidades[nome]} [{origem}]"
             )
 
     if historico:
         print("\nEQUAÇÕES UTILIZADAS")
-
         for passo in historico:
-            print(
-                f"- {passo['alvo']} "
-                f"usando "
-                f"{passo['equacao']}"
-            )
+            print(f"- {passo['alvo']} usando {passo['equacao']}")
 
     if ambiguidades:
-        print("\nATENÇÃO:")
+        print("\nATENÇÃO: existem múltiplas soluções matemáticas possíveis.")
+        for nome, info in ambiguidades.items():
+            print(f"{nome}: {info['candidatos']}")
         print(
-            "Alguma grandeza possui mais de uma "
-            "solução matemática possível."
+            "O programa não escolhe uma raiz sem um domínio físico informado."
         )
 
-        for nome, info in ambiguidades.items():
-            print(
-                f"{nome}: "
-                f"{info['candidatos']}"
-            )
-
-    faltantes = [
-        nome
-        for nome in SIMBOLOS
-        if nome not in valores
-    ]
+    faltantes = [nome for nome in SIMBOLOS if nome not in valores]
 
     if faltantes:
         print(
@@ -546,544 +775,107 @@ def resolver_muv():
             + ", ".join(faltantes)
         )
 
-    dados_para_grafico = (
-        "x0",
-        "v0",
-        "a",
-        "t",
-    )
-
-    if all(
-        nome in valores
-        for nome in dados_para_grafico
-    ):
+    # Se x0, v0 e a são conhecidos, já conseguimos escrever o movimento
+    # completo e entregar o mesmo motor de perguntas físicas.
+    if all(nome in valores for nome in ("x0", "v0", "a")):
         if ler_sim_nao(
-            "\nDeseja gerar os gráficos?",
+            "\nDeseja analisar este MUV com o motor físico?",
             padrao=False,
         ):
-            gerar_graficos_muv(
-                valores
-            )
+            try:
+                t_inicial, t_final = ler_intervalo(
+                    "Domínio físico que deseja estudar"
+                )
+                x_expr = (
+                    numero_exato(valores["x0"])
+                    + numero_exato(valores["v0"]) * tempo
+                    + sp.Rational(1, 2)
+                    * numero_exato(valores["a"])
+                    * tempo**2
+                )
+                movimento = criar_movimento_um_trecho(
+                    "x",
+                    sp.simplify(x_expr),
+                    t_inicial,
+                    t_final,
+                    nome="Partícula",
+                )
+                mostrar_movimento(movimento)
+                menu_perguntas_movimento(movimento)
+            except ValueError as erro:
+                print(f"\nErro: {erro}")
 
     pausar()
 
 
 # ============================================================
-# INTERFACE: FUNÇÃO CONHECIDA
+# INTERFACES PRINCIPAIS
 # ============================================================
+
 
 def resolver_funcao_conhecida():
-    print("\n" + "=" * 60)
-    print("MOVIMENTO RETILÍNEO — FUNÇÃO CONHECIDA")
-    print("=" * 60)
-
-    tipo = escolher_opcao(
-        "\nQual função o problema fornece?",
-        {
-            "x": "Posição x(t)",
-            "v": "Velocidade v(t)",
-            "a": "Aceleração a(t)",
-        },
-    )
-
     try:
-        conhecida = ler_expressao(
-            tipo
-        )
+        movimento = definir_movimento_funcao("Partícula")
     except ValueError as erro:
-        print(
-            f"\nErro: {erro}"
-        )
+        print(f"\nErro: {erro}")
         pausar()
         return
 
-    t0 = ler_float(
-        "\nTempo inicial t0 (s): "
-    )
-
-    x0_val = None
-    v0_val = None
-
-    if tipo == "v":
-        x0_val = ler_float(
-            f"Posição x({t0:g}) (m): "
-        )
-
-    elif tipo == "a":
-        x0_val = ler_float(
-            f"Posição x({t0:g}) (m): "
-        )
-
-        v0_val = ler_float(
-            f"Velocidade v({t0:g}) (m/s): "
-        )
-
-    try:
-        (
-            x_expr,
-            v_expr,
-            a_expr,
-        ) = construir_movimento(
-            tipo,
-            conhecida,
-            t0=t0,
-            x0=x0_val,
-            v0=v0_val,
-        )
-
-    except ValueError as erro:
-        print(
-            f"\nErro: {erro}"
-        )
-        pausar()
-        return
-
-    print("\n" + "=" * 60)
-    print("FUNÇÕES OBTIDAS")
-    print("=" * 60)
-
-    print(
-        f"x(t) = {sp.sstr(x_expr)}"
-    )
-    print(
-        f"v(t) = {sp.sstr(v_expr)}"
-    )
-    print(
-        f"a(t) = {sp.sstr(a_expr)}"
-    )
-
-    if ler_sim_nao(
-        "\nDeseja avaliar o movimento "
-        "em um instante específico?",
-        padrao=False,
-    ):
-        t_avaliar = ler_float(
-            "Instante t (s): "
-        )
-
-        x_valor = float(
-            sp.N(
-                x_expr.subs(
-                    tempo,
-                    t_avaliar,
-                )
-            )
-        )
-
-        v_valor = float(
-            sp.N(
-                v_expr.subs(
-                    tempo,
-                    t_avaliar,
-                )
-            )
-        )
-
-        a_valor = float(
-            sp.N(
-                a_expr.subs(
-                    tempo,
-                    t_avaliar,
-                )
-            )
-        )
-
-        print("\nNesse instante:")
-        print(
-            f"x = {x_valor:.8g} m"
-        )
-        print(
-            f"v = {v_valor:.8g} m/s"
-        )
-        print(
-            f"a = {a_valor:.8g} m/s²"
-        )
-
-    if ler_sim_nao(
-        "\nDeseja gerar os gráficos?",
-        padrao=False,
-    ):
-        t_inicial = ler_float(
-            "Tempo inicial do gráfico (s): "
-        )
-
-        t_final = ler_float(
-            "Tempo final do gráfico (s): "
-        )
-
-        if t_final <= t_inicial:
-            print(
-                "\nIntervalo inválido."
-            )
-        else:
-            gerar_graficos_funcoes(
-                x_expr,
-                v_expr,
-                a_expr,
-                t_inicial,
-                t_final,
-            )
-
+    mostrar_movimento(movimento)
+    menu_perguntas_movimento(movimento)
     pausar()
 
 
-# ============================================================
-# DUAS PARTÍCULAS
-# ============================================================
+def resolver_piecewise():
+    try:
+        movimento = definir_movimento_piecewise("Partícula")
+    except ValueError as erro:
+        print(f"\nErro: {erro}")
+        pausar()
+        return
 
-def ler_particula(numero):
-    """
-    Lê os dados de uma partícula e retorna x(t), v(t), a(t).
-    """
-    print("\n" + "-" * 60)
-    print(
-        f"PARTÍCULA {numero}"
-    )
-    print("-" * 60)
-
-    tipo = escolher_opcao(
-        "\nQual função é conhecida?",
-        {
-            "x": "Posição x(t)",
-            "v": "Velocidade v(t)",
-            "a": "Aceleração a(t)",
-        },
-    )
-
-    conhecida = ler_expressao(
-        tipo
-    )
-
-    t0 = ler_float(
-        "Tempo inicial t0 (s): "
-    )
-
-    x0_val = None
-    v0_val = None
-
-    if tipo == "v":
-        x0_val = ler_float(
-            f"Posição x({t0:g}) (m): "
-        )
-
-    elif tipo == "a":
-        x0_val = ler_float(
-            f"Posição x({t0:g}) (m): "
-        )
-
-        v0_val = ler_float(
-            f"Velocidade v({t0:g}) (m/s): "
-        )
-
-    return construir_movimento(
-        tipo,
-        conhecida,
-        t0=t0,
-        x0=x0_val,
-        v0=v0_val,
-    )
+    mostrar_movimento(movimento)
+    menu_perguntas_movimento(movimento)
+    pausar()
 
 
-def filtrar_solucoes_fisicas(
-    solucoes,
-    t_inicial,
-    t_final,
-):
-    """
-    Mantém soluções reais, numéricas, sem duplicação
-    e dentro do intervalo escolhido.
-    """
+# Compatibilidade com testes e versões anteriores.
+def filtrar_solucoes_fisicas(solucoes, t_inicial, t_final):
     validas = []
 
     for solucao in solucoes:
-        solucao_numerica = sp.N(
-            solucao
-        )
+        solucao_numerica = sp.N(solucao)
 
         if solucao_numerica.is_real is False:
             continue
 
         try:
-            valor = float(
-                solucao_numerica
-            )
-
+            valor = float(solucao_numerica)
         except (TypeError, ValueError):
             continue
 
-        if (
-            t_inicial
-            <= valor
-            <= t_final
-        ):
-            if not any(
-                abs(
-                    valor - existente
-                ) < 1e-10
-                for existente in validas
-            ):
-                validas.append(
-                    valor
-                )
+        if t_inicial <= valor <= t_final:
+            if not any(abs(valor - existente) < 1e-10 for existente in validas):
+                validas.append(valor)
 
-    validas.sort()
-    return validas
+    return sorted(validas)
 
 
 def resolver_duas_particulas():
-    print("\n" + "=" * 60)
-    print("MOVIMENTO E COMPARAÇÃO DE DUAS PARTÍCULAS")
-    print("=" * 60)
+    """Atalho de compatibilidade: agora a comparação vive no motor físico."""
+    print("\nDefina a Partícula 1.")
 
     try:
-        (
-            x1,
-            v1,
-            a1,
-        ) = ler_particula(1)
-
-        (
-            x2,
-            v2,
-            a2,
-        ) = ler_particula(2)
-
-    except Exception as erro:
-        print(
-            "\nErro ao construir o movimento: "
-            f"{erro}"
-        )
+        movimento1 = definir_movimento_interativo("Partícula 1")
+    except ValueError as erro:
+        print(f"\nErro: {erro}")
         pausar()
         return
 
-    print("\n" + "=" * 60)
-    print("FUNÇÕES OBTIDAS")
-    print("=" * 60)
-
-    print("\nPartícula 1:")
-    print(
-        f"x1(t) = {sp.sstr(x1)}"
-    )
-    print(
-        f"v1(t) = {sp.sstr(v1)}"
-    )
-    print(
-        f"a1(t) = {sp.sstr(a1)}"
-    )
-
-    print("\nPartícula 2:")
-    print(
-        f"x2(t) = {sp.sstr(x2)}"
-    )
-    print(
-        f"v2(t) = {sp.sstr(v2)}"
-    )
-    print(
-        f"a2(t) = {sp.sstr(a2)}"
-    )
-
-    evento = escolher_opcao(
-        "\nO que deseja encontrar?",
-        {
-            "1": "Quando possuem a mesma posição",
-            "2": "Quando possuem a mesma velocidade",
-        },
-    )
-
-    t_inicial = ler_float(
-        "\nTempo inicial da busca (s): "
-    )
-
-    t_final = ler_float(
-        "Tempo final da busca (s): "
-    )
-
-    if t_final <= t_inicial:
-        print(
-            "\nIntervalo inválido."
-        )
-        pausar()
-        return
-
-    if evento == "1":
-        equacao = sp.Eq(
-            x1,
-            x2,
-        )
-
-        grandeza1 = x1
-        grandeza2 = x2
-
-        ylabel = "Posição (m)"
-        titulo = "Posição das duas partículas"
-        unidade = "m"
-        nome_evento = "mesma posição"
-
-    else:
-        equacao = sp.Eq(
-            v1,
-            v2,
-        )
-
-        grandeza1 = v1
-        grandeza2 = v2
-
-        ylabel = "Velocidade (m/s)"
-        titulo = "Velocidade das duas partículas"
-        unidade = "m/s"
-        nome_evento = "mesma velocidade"
-
-    print(
-        "\nEquação resolvida:"
-    )
-    print(
-        f"{sp.sstr(equacao)}"
-    )
-
-    try:
-        solucoes = sp.solve(
-            equacao,
-            tempo,
-        )
-    except Exception as erro:
-        print(
-            "\nNão foi possível resolver simbolicamente "
-            f"a equação: {erro}"
-        )
-        pausar()
-        return
-
-    solucoes_validas = filtrar_solucoes_fisicas(
-        solucoes,
-        t_inicial,
-        t_final,
-    )
-
-    print("\n" + "=" * 60)
-    print("RESULTADO")
-    print("=" * 60)
-
-    if not solucoes_validas:
-        print(
-            "\nNenhuma solução física foi encontrada "
-            "no intervalo."
-        )
-
-    else:
-        print(
-            f"\nEvento: {nome_evento}"
-        )
-
-        for instante in solucoes_validas:
-            valor_comum = float(
-                sp.N(
-                    grandeza1.subs(
-                        tempo,
-                        instante,
-                    )
-                )
-            )
-
-            print(
-                f"\nt = {instante:.8g} s"
-            )
-            print(
-                f"valor comum = "
-                f"{valor_comum:.8g} {unidade}"
-            )
-
-    if ler_sim_nao(
-        "\nDeseja gerar o gráfico comparativo?",
-        padrao=False,
-    ):
-        valores_t = np.linspace(
-            t_inicial,
-            t_final,
-            1000,
-        )
-
-        y1 = avaliar_expressao(
-            grandeza1,
-            valores_t,
-        )
-
-        y2 = avaliar_expressao(
-            grandeza2,
-            valores_t,
-        )
-
-        plt.figure(figsize=(9, 5))
-
-        plt.plot(
-            valores_t,
-            y1,
-            label="Partícula 1",
-        )
-
-        plt.plot(
-            valores_t,
-            y2,
-            label="Partícula 2",
-        )
-
-        for instante in solucoes_validas:
-            valor = float(
-                sp.N(
-                    grandeza1.subs(
-                        tempo,
-                        instante,
-                    )
-                )
-            )
-
-            plt.scatter(
-                [instante],
-                [valor],
-                s=70,
-                zorder=5,
-                label=(
-                    f"evento: t={instante:.3f} s"
-                ),
-            )
-
-            plt.axvline(
-                instante,
-                linestyle="--",
-                alpha=0.5,
-            )
-
-        plt.axhline(
-            0,
-            linewidth=0.8,
-        )
-
-        plt.xlabel(
-            "Tempo (s)"
-        )
-
-        plt.ylabel(
-            ylabel
-        )
-
-        plt.title(
-            titulo
-        )
-
-        plt.grid(
-            True,
-            alpha=0.3,
-        )
-
-        plt.legend()
-        plt.tight_layout()
-        plt.show()
-
+    mostrar_movimento(movimento1)
+    _acao_comparar(movimento1)
     pausar()
 
-
-# ============================================================
-# MENU DO MÓDULO DE CINEMÁTICA
-# ============================================================
 
 def menu_cinematica():
     while True:
@@ -1095,8 +887,8 @@ def menu_cinematica():
             "\nComo o problema fornece os dados?",
             {
                 "1": "Valores numéricos — MUV",
-                "2": "Função x(t), v(t) ou a(t)",
-                "3": "Movimento e comparação de duas partículas",
+                "2": "Uma função x(t), v(t) ou a(t)",
+                "3": "Movimento por trechos — Piecewise",
                 "0": "Voltar",
             },
         )
@@ -1106,9 +898,7 @@ def menu_cinematica():
 
         if opcao == "1":
             resolver_muv()
-
         elif opcao == "2":
             resolver_funcao_conhecida()
-
         elif opcao == "3":
-            resolver_duas_particulas()
+            resolver_piecewise()

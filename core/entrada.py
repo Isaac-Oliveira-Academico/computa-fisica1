@@ -156,3 +156,20 @@ def pausar():
     input(
         "\nPressione ENTER para continuar..."
     )
+
+def ler_int(mensagem, minimo=None):
+    """Lê um número inteiro, com limite mínimo opcional."""
+    while True:
+        texto = input(mensagem).strip()
+
+        try:
+            valor = int(texto)
+        except ValueError:
+            print("Digite um número inteiro.")
+            continue
+
+        if minimo is not None and valor < minimo:
+            print(f"Digite um valor maior ou igual a {minimo}.")
+            continue
+
+        return valor
