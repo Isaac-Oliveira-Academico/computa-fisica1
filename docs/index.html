@@ -71,16 +71,46 @@
             </label>
 
             <select id="acao">
+
                 <option value="modelo">
                     Mostrar x(t), v(t) e a(t)
+                </option>
+
+                <option value="posicao">
+                    Quando a posição assume um valor?
+                </option>
+
+                <option value="velocidade">
+                    Quando a velocidade assume um valor?
+                </option>
+
+                <option value="aceleracao">
+                    Quando a aceleração assume um valor?
                 </option>
 
                 <option value="parar">
                     Quando a partícula para?
                 </option>
+
             </select>
 
             <br><br>
+
+            <div id="alvo-container" hidden>
+
+                <label for="alvo">
+                    Valor procurado:
+                </label>
+
+                <input
+                    id="alvo"
+                    type="text"
+                    value="0"
+                >
+
+                <br><br>
+
+            </div>
 
             <button id="calcular" disabled>
                 Carregando Python...
