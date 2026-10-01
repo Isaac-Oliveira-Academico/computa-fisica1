@@ -24,13 +24,17 @@ async function iniciarPython() {
 
 async function calcularMovimento() {
 
-    const funcao = document.getElementById("funcao").value;
+    const funcao =
+        document.getElementById("funcao").value;
 
     const tInicial =
         Number(document.getElementById("t-inicial").value);
 
     const tFinal =
         Number(document.getElementById("t-final").value);
+
+    const acao =
+        document.getElementById("acao").value;
 
 
     if (tInicial >= tFinal) {
@@ -61,15 +65,73 @@ x = sp.sympify(
 )
 
 v = sp.diff(x, t)
-
 a = sp.diff(v, t)
+
+t_inicial = float(t_inicial_js)
+t_final = float(t_final_js)
+
+dominio = sp.Interval(
+    t_inicial,
+    t_final
+)
+
+solucoes = sp.solveset(
+    v,
+    t,
+    domain=dominio
+)
+
+
+if solucoes == sp.EmptySet:
+
+    tipo_parada = "nenhuma"
+    paradas_exatas = []
+    paradas_numericas = []
+
+
+elif isinstance(solucoes, sp.FiniteSet):
+
+    tipo_parada = "pontos"
+
+    solucoes_ordenadas = sorted(
+        list(solucoes),
+        key=lambda valor: float(sp.N(valor))
+    )
+
+    paradas_exatas = [
+        str(valor)
+        for valor in solucoes_ordenadas
+    ]
+
+    paradas_numericas = [
+        float(sp.N(valor))
+        for valor in solucoes_ordenadas
+    ]
+
+
+elif solucoes == dominio:
+
+    tipo_parada = "todo_dominio"
+    paradas_exatas = []
+    paradas_numericas = []
+
+
+else:
+
+    tipo_parada = "nao_reduzido"
+    paradas_exatas = [str(solucoes)]
+    paradas_numericas = []
+
 
 resultado_python = {
     "x": str(sp.factor(x)),
     "v": str(sp.factor(v)),
     "a": str(sp.factor(a)),
-    "t_inicial": float(t_inicial_js),
-    "t_final": float(t_final_js)
+    "t_inicial": t_inicial,
+    "t_final": t_final,
+    "tipo_parada": tipo_parada,
+    "paradas_exatas": paradas_exatas,
+    "paradas_numericas": paradas_numericas
 }
 
 resultado_python
@@ -81,7 +143,7 @@ resultado_python
         });
 
 
-        resultado.innerHTML = `
+        let html = `
             <p>
                 <strong>Domínio:</strong>
                 ${dados.t_inicial} ≤ t ≤ ${dados.t_final}
@@ -104,6 +166,103 @@ resultado_python
         `;
 
 
+        if (acao === "parar") {
+
+            html += `
+                <hr>
+
+                <p>
+                    <strong>Condição física:</strong>
+                    v(t) = 0
+                </p>
+            `;
+
+
+            if (dados.tipo_parada === "nenhuma") {
+
+                html += `
+                    <p>
+                        A partícula não para dentro
+                        do domínio informado.
+                    </p>
+                `;
+            }
+
+
+            else if (dados.tipo_parada === "todo_dominio") {
+
+                html += `
+                    <p>
+                        A velocidade é zero em todo
+                        o domínio informado.
+                    </p>
+
+                    <p>
+                        A partícula permanece em repouso.
+                    </p>
+                `;
+            }
+
+
+            else if (dados.tipo_parada === "pontos") {
+
+                html += `
+                    <p>
+                        <strong>Instantes encontrados:</strong>
+                    </p>
+
+                    <ul>
+                `;
+
+
+                for (
+                    let i = 0;
+                    i < dados.paradas_numericas.length;
+                    i++
+                ) {
+
+                    const exata =
+                        dados.paradas_exatas[i];
+
+                    const numerica =
+                        dados.paradas_numericas[i];
+
+
+                    html += `
+                        <li>
+                            t = ${numerica.toFixed(9)} s
+                            &nbsp;
+                            (${exata})
+                        </li>
+                    `;
+                }
+
+
+                html += `
+                    </ul>
+                `;
+            }
+
+
+            else {
+
+                html += `
+                    <p>
+                        O SymPy encontrou uma solução,
+                        mas ela não pôde ser reduzida
+                        automaticamente a instantes isolados.
+                    </p>
+
+                    <p>
+                        ${dados.paradas_exatas[0]}
+                    </p>
+                `;
+            }
+        }
+
+
+        resultado.innerHTML = html;
+
         resposta.destroy();
 
     }
@@ -114,7 +273,8 @@ resultado_python
 
         resultado.innerHTML = `
             <p>
-                Não foi possível interpretar a função fornecida.
+                Não foi possível interpretar
+                ou resolver a função fornecida.
             </p>
         `;
     }
