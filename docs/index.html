@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>COMPUTA — Física 1</title>
+
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Python dentro do navegador -->
+    <script
+        src="https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js">
+    </script>
+</head>
+
+<body>
+
+    <main>
+
+        <h1>COMPUTA</h1>
+
+        <h2>Solver Educacional de Física 1</h2>
+
+        <p>
+            Projeto para estudo de Cinemática Unidimensional
+            e Métodos Computacionais.
+        </p>
+
+        <section>
+
+            <h3>Movimento Retilíneo</h3>
+
+            <label for="funcao">
+                Função posição x(t):
+            </label>
+
+            <input
+                id="funcao"
+                type="text"
+                value="20*t - 5*t**3"
+            >
+
+            <br><br>
+
+            <label for="t-inicial">
+                Tempo inicial:
+            </label>
+
+            <input
+                id="t-inicial"
+                type="number"
+                value="-2"
+            >
+
+            <label for="t-final">
+                Tempo final:
+            </label>
+
+            <input
+                id="t-final"
+                type="number"
+                value="2"
+            >
+
+            <br><br>
+
+            <button id="calcular" disabled>
+                Carregando Python...
+            </button>
+
+        </section>
+
+        <section>
+
+            <h3>Resultado</h3>
+
+            <div id="status">
+                Inicializando motor Python...
+            </div>
+
+            <div id="resultado">
+            </div>
+
+        </section>
+
+    </main>
+
+    <script src="app.js"></script>
+
+</body>
+
+</html>
