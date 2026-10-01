@@ -9,7 +9,7 @@
 
     <link rel="stylesheet" href="style.css">
 
-    <!-- Python dentro do navegador -->
+    <!-- Python executado dentro do navegador -->
     <script
         src="https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js">
     </script>
@@ -76,6 +76,10 @@
                     Mostrar x(t), v(t) e a(t)
                 </option>
 
+                <option value="avaliar">
+                    Avaliar x(t), v(t) e a(t) em um instante
+                </option>
+
                 <option value="posicao">
                     Quando a posição assume um valor?
                 </option>
@@ -96,19 +100,22 @@
 
             <br><br>
 
-            <div id="alvo-container" hidden>
+            <div id="entrada-extra-container" hidden>
 
-                <label for="alvo">
-                    Valor procurado:
+                <label
+                    id="entrada-extra-label"
+                    for="entrada-extra">
+                    Valor:
                 </label>
 
                 <input
-                    id="alvo"
+                    id="entrada-extra"
                     type="text"
                     value="0"
                 >
 
-                <br><br>
+                <p id="entrada-extra-ajuda">
+                </p>
 
             </div>
 

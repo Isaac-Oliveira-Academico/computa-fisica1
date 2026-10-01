@@ -3,71 +3,174 @@ const resultado = document.getElementById("resultado");
 const status = document.getElementById("status");
 
 const seletorAcao = document.getElementById("acao");
-const alvoContainer = document.getElementById("alvo-container");
-const campoAlvo = document.getElementById("alvo");
+
+const entradaExtraContainer =
+    document.getElementById("entrada-extra-container");
+
+const entradaExtraLabel =
+    document.getElementById("entrada-extra-label");
+
+const entradaExtra =
+    document.getElementById("entrada-extra");
+
+const entradaExtraAjuda =
+    document.getElementById("entrada-extra-ajuda");
+
 
 let pyodide = null;
 
 
 /*
-    Inicializa o interpretador Python no navegador
-    e carrega a biblioteca SymPy.
+    ------------------------------------------------------------
+    INICIALIZAÇÃO DO PYTHON
+    ------------------------------------------------------------
+
+    Pyodide permite executar Python dentro do navegador.
+
+    Depois carregamos SymPy, que será responsável
+    pelos cálculos simbólicos.
 */
 async function iniciarPython() {
 
-    status.textContent = "Carregando Python...";
+    status.textContent =
+        "Carregando Python...";
 
-    pyodide = await loadPyodide();
+    pyodide =
+        await loadPyodide();
 
-    status.textContent = "Carregando SymPy...";
+    status.textContent =
+        "Carregando SymPy...";
 
-    await pyodide.loadPackage("sympy");
+    await pyodide.loadPackage(
+        "sympy"
+    );
 
-    status.textContent = "Motor Python/SymPy pronto.";
+    status.textContent =
+        "Motor Python/SymPy pronto.";
 
     botao.disabled = false;
-    botao.textContent = "Calcular";
+
+    botao.textContent =
+        "Calcular";
 }
 
 
 /*
-    Algumas perguntas precisam de um valor-alvo.
+    ------------------------------------------------------------
+    CONFIGURAÇÃO DA INTERFACE
+    ------------------------------------------------------------
 
-    Exemplo:
+    Algumas operações precisam de uma entrada extra.
 
-    x(t) = 300
-    v(t) = 20
-    a(t) = -9.8
+    Exemplos:
 
-    Já as opções "modelo" e "parar" não precisam,
-    porque "parar" significa automaticamente v(t) = 0.
+    avaliar:
+        t0 = 3
+
+    posição:
+        x(t) = 300
+
+    velocidade:
+        v(t) = 20
+
+    aceleração:
+        a(t) = -9.8
+
+    Já as opções:
+
+        modelo
+        parar
+
+    não precisam desse campo.
 */
-function atualizarCampoAlvo() {
+function atualizarCampoExtra() {
 
-    const acao = seletorAcao.value;
+    const acao =
+        seletorAcao.value;
 
-    const precisaAlvo =
-        acao === "posicao" ||
-        acao === "velocidade" ||
-        acao === "aceleracao";
 
-    alvoContainer.hidden = !precisaAlvo;
+    if (acao === "avaliar") {
+
+        entradaExtraContainer.hidden =
+            false;
+
+        entradaExtraLabel.textContent =
+            "Instante t₀:";
+
+        entradaExtraAjuda.textContent =
+            "Exemplos: 3, 1/2 ou 2.5";
+
+        return;
+    }
+
+
+    if (acao === "posicao") {
+
+        entradaExtraContainer.hidden =
+            false;
+
+        entradaExtraLabel.textContent =
+            "Posição procurada x (m):";
+
+        entradaExtraAjuda.textContent =
+            "Exemplos: 300, -5 ou 1/2";
+
+        return;
+    }
+
+
+    if (acao === "velocidade") {
+
+        entradaExtraContainer.hidden =
+            false;
+
+        entradaExtraLabel.textContent =
+            "Velocidade procurada v (m/s):";
+
+        entradaExtraAjuda.textContent =
+            "Exemplos: 20, -5 ou 10/3";
+
+        return;
+    }
+
+
+    if (acao === "aceleracao") {
+
+        entradaExtraContainer.hidden =
+            false;
+
+        entradaExtraLabel.textContent =
+            "Aceleração procurada a (m/s²):";
+
+        entradaExtraAjuda.textContent =
+            "Exemplos: 12, -9.8 ou 5/2";
+
+        return;
+    }
+
+
+    /*
+        modelo e parar
+    */
+    entradaExtraContainer.hidden =
+        true;
 }
 
 
 /*
-    Nesta primeira versão pública, aceitamos expressões
-    algébricas simples em t.
+    ------------------------------------------------------------
+    VALIDAÇÃO DA FUNÇÃO x(t)
+    ------------------------------------------------------------
 
-    Exemplos válidos:
+    Nesta fase do projeto aceitamos expressões algébricas
+    simples envolvendo t.
 
-    20*t - 5*t**3
-    12*t**2 - 2*t**3
-    15*t**2/2
-    7
+    Exemplos:
 
-    A restrição evita que uma entrada arbitrária seja
-    executada pelo interpretador simbólico.
+        20*t - 5*t**3
+        12*t**2 - 2*t**3
+        15*t**2/2
+        7
 */
 function funcaoValida(texto) {
 
@@ -82,16 +185,20 @@ function funcaoValida(texto) {
 
 
 /*
-    O valor-alvo deve ser uma expressão numérica.
+    ------------------------------------------------------------
+    VALIDAÇÃO DE VALORES NUMÉRICOS SIMBÓLICOS
+    ------------------------------------------------------------
 
-    Exemplos:
+    Permite:
 
-    300
-    -5
-    1/2
-    9.8
+        3
+        -5
+        1/2
+        2.5
+
+    mas não permite variáveis.
 */
-function alvoValido(texto) {
+function valorExtraValido(texto) {
 
     const padrao =
         /^[0-9+\-*/().\s]+$/;
@@ -104,39 +211,95 @@ function alvoValido(texto) {
 
 
 /*
-    Função principal da aplicação.
+    ------------------------------------------------------------
+    FORMATAÇÃO DOS RESULTADOS
+    ------------------------------------------------------------
 
-    1. Lê os dados da interface.
+    Se o valor exato for simplesmente um número,
+    mostramos apenas esse valor.
+
+    Se for algo simbólico, como:
+
+        2*sqrt(10)
+
+    mostramos também uma aproximação decimal.
+*/
+function formatarValor(
+    exato,
+    numerico,
+    unidade
+) {
+
+    const valorDireto =
+        Number(exato);
+
+    if (
+        Number.isFinite(valorDireto) &&
+        Math.abs(
+            valorDireto - numerico
+        ) < 1e-12
+    ) {
+
+        return `
+            ${exato} ${unidade}
+        `;
+    }
+
+
+    return `
+        ${exato} ${unidade}
+        (≈ ${numerico.toFixed(9)} ${unidade})
+    `;
+}
+
+
+/*
+    ------------------------------------------------------------
+    FUNÇÃO PRINCIPAL
+    ------------------------------------------------------------
+
+    Fluxo:
+
+    1. Lê os dados da página.
     2. Valida os dados.
-    3. Envia os valores ao Python.
+    3. Envia para Python.
     4. SymPy constrói x(t), v(t) e a(t).
-    5. Se necessário, resolve um evento físico.
-    6. Mostra o resultado no navegador.
+    5. Executa a operação física escolhida.
+    6. Devolve os resultados ao JavaScript.
 */
 async function calcularMovimento() {
 
     const funcao =
-        document.getElementById("funcao").value.trim();
+        document
+            .getElementById("funcao")
+            .value
+            .trim();
 
     const tInicial =
         Number(
-            document.getElementById("t-inicial").value
+            document
+                .getElementById("t-inicial")
+                .value
         );
 
     const tFinal =
         Number(
-            document.getElementById("t-final").value
+            document
+                .getElementById("t-final")
+                .value
         );
 
     const acao =
         seletorAcao.value;
 
-    const alvoTexto =
-        campoAlvo.value.trim();
+    const valorExtraTexto =
+        entradaExtra.value.trim();
 
 
     /*
-        Validação da função fornecida.
+        --------------------------------------------------------
+        VALIDAÇÃO DA FUNÇÃO
+        --------------------------------------------------------
     */
     if (!funcaoValida(funcao)) {
 
@@ -157,7 +320,9 @@ async function calcularMovimento() {
 
 
     /*
-        Validação do domínio físico.
+        --------------------------------------------------------
+        VALIDAÇÃO DO DOMÍNIO
+        --------------------------------------------------------
     */
     if (
         !Number.isFinite(tInicial) ||
@@ -189,27 +354,32 @@ async function calcularMovimento() {
 
 
     /*
-        As três perguntas genéricas precisam
-        de um valor-alvo.
+        --------------------------------------------------------
+        AÇÕES QUE PRECISAM DE UMA ENTRADA EXTRA
+        --------------------------------------------------------
     */
-    const precisaAlvo =
+    const precisaValorExtra =
+        acao === "avaliar" ||
         acao === "posicao" ||
         acao === "velocidade" ||
         acao === "aceleracao";
 
 
     if (
-        precisaAlvo &&
-        !alvoValido(alvoTexto)
+        precisaValorExtra &&
+        !valorExtraValido(
+            valorExtraTexto
+        )
     ) {
 
         resultado.innerHTML = `
             <p>
-                Erro: informe um valor procurado válido.
+                Erro: informe um valor válido.
             </p>
 
             <p>
-                Exemplos: 300, -5, 1/2 ou 9.8
+                Exemplos:
+                3, -5, 1/2 ou 2.5
             </p>
         `;
 
@@ -218,8 +388,9 @@ async function calcularMovimento() {
 
 
     /*
-        Transferência dos dados JavaScript
-        para o ambiente Python/Pyodide.
+        --------------------------------------------------------
+        ENVIO DOS DADOS PARA O PYTHON
+        --------------------------------------------------------
     */
     pyodide.globals.set(
         "funcao_js",
@@ -242,16 +413,19 @@ async function calcularMovimento() {
     );
 
     pyodide.globals.set(
-        "alvo_js",
-        precisaAlvo ? alvoTexto : ""
+        "valor_extra_js",
+        precisaValorExtra
+            ? valorExtraTexto
+            : ""
     );
 
 
     try {
 
         /*
-            Este bloco é Python real executado
-            dentro do navegador através do Pyodide.
+            ====================================================
+            PYTHON EXECUTADO DENTRO DO NAVEGADOR
+            ====================================================
         */
         const resposta =
             await pyodide.runPythonAsync(`
@@ -259,9 +433,9 @@ async function calcularMovimento() {
 import sympy as sp
 
 
-# ---------------------------------------------------------
-# 1. Variável simbólica
-# ---------------------------------------------------------
+# =============================================================
+# 1. VARIÁVEL SIMBÓLICA
+# =============================================================
 
 t = sp.symbols(
     "t",
@@ -269,9 +443,9 @@ t = sp.symbols(
 )
 
 
-# ---------------------------------------------------------
-# 2. Função posição x(t)
-# ---------------------------------------------------------
+# =============================================================
+# 2. CONSTRUÇÃO DA FUNÇÃO POSIÇÃO
+# =============================================================
 
 x = sp.sympify(
     funcao_js,
@@ -281,9 +455,7 @@ x = sp.sympify(
 )
 
 
-# Segurança conceitual:
-# nesta etapa do projeto aceitamos apenas t
-# como variável simbólica.
+# A função só pode depender de t.
 if not x.free_symbols.issubset({t}):
 
     raise ValueError(
@@ -291,9 +463,9 @@ if not x.free_symbols.issubset({t}):
     )
 
 
-# ---------------------------------------------------------
-# 3. Cinemática diferencial
-# ---------------------------------------------------------
+# =============================================================
+# 3. CINEMÁTICA DIFERENCIAL
+# =============================================================
 
 v = sp.diff(
     x,
@@ -306,9 +478,9 @@ a = sp.diff(
 )
 
 
-# ---------------------------------------------------------
-# 4. Domínio físico
-# ---------------------------------------------------------
+# =============================================================
+# 4. DOMÍNIO FÍSICO
+# =============================================================
 
 t_inicial = float(
     t_inicial_js
@@ -324,76 +496,242 @@ dominio = sp.Interval(
 )
 
 
-# ---------------------------------------------------------
-# 5. Configuração do evento físico
-# ---------------------------------------------------------
+# =============================================================
+# 5. AÇÃO ESCOLHIDA
+# =============================================================
 
 acao = str(
     acao_js
 )
 
-tipo_evento = "nao_aplicavel"
+
+# =============================================================
+# 6. VARIÁVEIS DE RESULTADO
+# =============================================================
+
+tipo_operacao = ""
 
 grandeza_nome = ""
+
 unidade = ""
 
 alvo = None
 
-solucoes = None
+tipo_evento = "nao_aplicavel"
 
 solucoes_exatas = []
+
 solucoes_numericas = []
 
 
-if acao == "posicao":
+# Resultados da avaliação em t0
+instante_exato = ""
+
+instante_numerico = None
+
+avaliacao_valida = False
+
+avaliacao_mensagem = ""
+
+x_avaliado_exato = ""
+
+v_avaliado_exato = ""
+
+a_avaliado_exato = ""
+
+x_avaliado_numerico = None
+
+v_avaliado_numerico = None
+
+a_avaliado_numerico = None
+
+
+# =============================================================
+# 7. MODO: APENAS MOSTRAR O MODELO
+# =============================================================
+
+if acao == "modelo":
+
+    tipo_operacao = "modelo"
+
+
+# =============================================================
+# 8. MODO: AVALIAR ESTADO EM t0
+# =============================================================
+
+elif acao == "avaliar":
+
+    tipo_operacao = "avaliacao"
+
+    instante = sp.sympify(
+        valor_extra_js
+    )
+
+
+    if instante.free_symbols:
+
+        raise ValueError(
+            "O instante não pode conter variáveis."
+        )
+
+
+    instante_num = float(
+        sp.N(instante)
+    )
+
+
+    instante_exato = str(
+        sp.simplify(instante)
+    )
+
+    instante_numerico = (
+        instante_num
+    )
+
+
+    # ---------------------------------------------------------
+    # O instante precisa pertencer ao domínio físico.
+    # ---------------------------------------------------------
+
+    if (
+        instante_num < t_inicial
+        or
+        instante_num > t_final
+    ):
+
+        avaliacao_valida = False
+
+        avaliacao_mensagem = (
+            "O instante informado está fora "
+            "do domínio físico."
+        )
+
+
+    else:
+
+        avaliacao_valida = True
+
+
+        x_t0 = sp.simplify(
+            x.subs(
+                t,
+                instante
+            )
+        )
+
+        v_t0 = sp.simplify(
+            v.subs(
+                t,
+                instante
+            )
+        )
+
+        a_t0 = sp.simplify(
+            a.subs(
+                t,
+                instante
+            )
+        )
+
+
+        x_avaliado_exato = str(
+            x_t0
+        )
+
+        v_avaliado_exato = str(
+            v_t0
+        )
+
+        a_avaliado_exato = str(
+            a_t0
+        )
+
+
+        x_avaliado_numerico = float(
+            sp.N(x_t0)
+        )
+
+        v_avaliado_numerico = float(
+            sp.N(v_t0)
+        )
+
+        a_avaliado_numerico = float(
+            sp.N(a_t0)
+        )
+
+
+# =============================================================
+# 9. EVENTO DE POSIÇÃO
+# =============================================================
+
+elif acao == "posicao":
+
+    tipo_operacao = "evento"
 
     expressao_evento = x
 
     grandeza_nome = "x(t)"
+
     unidade = "m"
 
     alvo = sp.sympify(
-        alvo_js
+        valor_extra_js
     )
 
 
+# =============================================================
+# 10. EVENTO DE VELOCIDADE
+# =============================================================
+
 elif acao == "velocidade":
+
+    tipo_operacao = "evento"
 
     expressao_evento = v
 
     grandeza_nome = "v(t)"
+
     unidade = "m/s"
 
     alvo = sp.sympify(
-        alvo_js
+        valor_extra_js
     )
 
 
+# =============================================================
+# 11. EVENTO DE ACELERAÇÃO
+# =============================================================
+
 elif acao == "aceleracao":
+
+    tipo_operacao = "evento"
 
     expressao_evento = a
 
     grandeza_nome = "a(t)"
+
     unidade = "m/s²"
 
     alvo = sp.sympify(
-        alvo_js
+        valor_extra_js
     )
 
 
+# =============================================================
+# 12. QUANDO A PARTÍCULA PARA
+# =============================================================
+
 elif acao == "parar":
+
+    tipo_operacao = "evento"
 
     expressao_evento = v
 
     grandeza_nome = "v(t)"
+
     unidade = "m/s"
 
     alvo = sp.Integer(0)
-
-
-elif acao == "modelo":
-
-    expressao_evento = None
 
 
 else:
@@ -403,11 +741,11 @@ else:
     )
 
 
-# ---------------------------------------------------------
-# 6. Validação do valor-alvo
-# ---------------------------------------------------------
+# =============================================================
+# 13. RESOLUÇÃO DO EVENTO
+# =============================================================
 
-if alvo is not None:
+if tipo_operacao == "evento":
 
     if alvo.free_symbols:
 
@@ -416,17 +754,13 @@ if alvo is not None:
         )
 
 
-# ---------------------------------------------------------
-# 7. Resolver evento físico
-#
-#    expressão(t) = alvo
-#
-#    é equivalente a:
-#
-#    expressão(t) - alvo = 0
-# ---------------------------------------------------------
-
-if expressao_evento is not None:
+        # Queremos resolver:
+        #
+        #     expressão(t) = alvo
+        #
+        # que equivale a:
+        #
+        #     expressão(t) - alvo = 0
 
     solucoes = sp.solveset(
         expressao_evento - alvo,
@@ -435,27 +769,27 @@ if expressao_evento is not None:
     )
 
 
-    # -----------------------------------------------------
-    # Nenhuma solução dentro do domínio
-    # -----------------------------------------------------
+    # ---------------------------------------------------------
+    # Nenhuma solução
+    # ---------------------------------------------------------
 
     if solucoes == sp.EmptySet:
 
         tipo_evento = "nenhuma"
 
 
-    # -----------------------------------------------------
-    # A condição é satisfeita em todo o domínio
-    # -----------------------------------------------------
+    # ---------------------------------------------------------
+    # Todo o domínio é solução
+    # ---------------------------------------------------------
 
     elif solucoes == dominio:
 
         tipo_evento = "todo_dominio"
 
 
-    # -----------------------------------------------------
-    # Um conjunto finito de instantes
-    # -----------------------------------------------------
+    # ---------------------------------------------------------
+    # Instantes isolados
+    # ---------------------------------------------------------
 
     elif isinstance(
         solucoes,
@@ -463,6 +797,7 @@ if expressao_evento is not None:
     ):
 
         tipo_evento = "pontos"
+
 
         solucoes_ordenadas = sorted(
             list(solucoes),
@@ -472,6 +807,7 @@ if expressao_evento is not None:
                 )
         )
 
+
         solucoes_exatas = [
             str(
                 sp.simplify(valor)
@@ -479,6 +815,7 @@ if expressao_evento is not None:
             for valor
             in solucoes_ordenadas
         ]
+
 
         solucoes_numericas = [
             float(
@@ -489,9 +826,9 @@ if expressao_evento is not None:
         ]
 
 
-    # -----------------------------------------------------
-    # SymPy encontrou uma solução simbólica mais geral
-    # -----------------------------------------------------
+    # ---------------------------------------------------------
+    # Solução simbólica mais complexa
+    # ---------------------------------------------------------
 
     else:
 
@@ -502,23 +839,26 @@ if expressao_evento is not None:
         ]
 
 
-# ---------------------------------------------------------
-# 8. Resultado devolvido ao JavaScript
-# ---------------------------------------------------------
+# =============================================================
+# 14. OBJETO DEVOLVIDO AO JAVASCRIPT
+# =============================================================
 
 resultado_python = {
 
-    "x": str(
-        sp.factor(x)
-    ),
+    "x":
+        str(
+            sp.factor(x)
+        ),
 
-    "v": str(
-        sp.factor(v)
-    ),
+    "v":
+        str(
+            sp.factor(v)
+        ),
 
-    "a": str(
-        sp.factor(a)
-    ),
+    "a":
+        str(
+            sp.factor(a)
+        ),
 
     "t_inicial":
         t_inicial,
@@ -529,8 +869,8 @@ resultado_python = {
     "acao":
         acao,
 
-    "tipo_evento":
-        tipo_evento,
+    "tipo_operacao":
+        tipo_operacao,
 
     "grandeza_nome":
         grandeza_nome,
@@ -547,11 +887,44 @@ resultado_python = {
             else ""
         ),
 
+    "tipo_evento":
+        tipo_evento,
+
     "solucoes_exatas":
         solucoes_exatas,
 
     "solucoes_numericas":
-        solucoes_numericas
+        solucoes_numericas,
+
+    "instante_exato":
+        instante_exato,
+
+    "instante_numerico":
+        instante_numerico,
+
+    "avaliacao_valida":
+        avaliacao_valida,
+
+    "avaliacao_mensagem":
+        avaliacao_mensagem,
+
+    "x_avaliado_exato":
+        x_avaliado_exato,
+
+    "v_avaliado_exato":
+        v_avaliado_exato,
+
+    "a_avaliado_exato":
+        a_avaliado_exato,
+
+    "x_avaliado_numerico":
+        x_avaliado_numerico,
+
+    "v_avaliado_numerico":
+        v_avaliado_numerico,
+
+    "a_avaliado_numerico":
+        a_avaliado_numerico
 }
 
 
@@ -560,8 +933,9 @@ resultado_python
 
 
         /*
-            Converte o dicionário Python
-            para um objeto JavaScript.
+            ====================================================
+            CONVERSÃO PYTHON -> JAVASCRIPT
+            ====================================================
         */
         const dados =
             resposta.toJs({
@@ -571,7 +945,9 @@ resultado_python
 
 
         /*
-            Parte comum a todas as respostas.
+            ====================================================
+            BLOCO COMUM DO RESULTADO
+            ====================================================
         */
         let html = `
             <p>
@@ -599,17 +975,105 @@ resultado_python
 
 
         /*
-            Se a opção escolhida for somente
-            "Mostrar x(t), v(t) e a(t)",
-            não existe evento adicional.
+            ====================================================
+            RESULTADO DA AVALIAÇÃO EM t0
+            ====================================================
         */
-        if (acao !== "modelo") {
+        if (
+            dados.tipo_operacao ===
+            "avaliacao"
+        ) {
+
+            html += `
+                <hr>
+
+                <p>
+                    <strong>
+                        Instante avaliado:
+                    </strong>
+
+                    t =
+                    ${dados.instante_exato}
+                    s
+                </p>
+            `;
+
+
+            if (
+                !dados.avaliacao_valida
+            ) {
+
+                html += `
+                    <p>
+                        ${dados.avaliacao_mensagem}
+                    </p>
+                `;
+            }
+
+
+            else {
+
+                html += `
+                    <p>
+                        <strong>Estado da partícula:</strong>
+                    </p>
+
+                    <p>
+                        x(${dados.instante_exato})
+                        =
+                        ${formatarValor(
+                            dados.x_avaliado_exato,
+                            Number(
+                                dados.x_avaliado_numerico
+                            ),
+                            "m"
+                        )}
+                    </p>
+
+                    <p>
+                        v(${dados.instante_exato})
+                        =
+                        ${formatarValor(
+                            dados.v_avaliado_exato,
+                            Number(
+                                dados.v_avaliado_numerico
+                            ),
+                            "m/s"
+                        )}
+                    </p>
+
+                    <p>
+                        a(${dados.instante_exato})
+                        =
+                        ${formatarValor(
+                            dados.a_avaliado_exato,
+                            Number(
+                                dados.a_avaliado_numerico
+                            ),
+                            "m/s²"
+                        )}
+                    </p>
+                `;
+            }
+        }
+
+
+        /*
+            ====================================================
+            RESULTADO DOS EVENTOS
+            ====================================================
+        */
+        if (
+            dados.tipo_operacao ===
+            "evento"
+        ) {
 
             html += `
                 <hr>
 
                 <p>
                     <strong>Condição física:</strong>
+
                     ${dados.grandeza_nome}
                     =
                     ${dados.alvo}
@@ -619,8 +1083,7 @@ resultado_python
 
 
             /*
-                Caso 1:
-                nenhuma solução.
+                Nenhuma solução.
             */
             if (
                 dados.tipo_evento ===
@@ -639,8 +1102,7 @@ resultado_python
 
 
             /*
-                Caso 2:
-                toda a faixa temporal é solução.
+                Todo o domínio.
             */
             else if (
                 dados.tipo_evento ===
@@ -655,7 +1117,10 @@ resultado_python
                 `;
 
 
-                if (acao === "parar") {
+                if (
+                    dados.acao ===
+                    "parar"
+                ) {
 
                     html += `
                         <p>
@@ -669,8 +1134,7 @@ resultado_python
 
 
             /*
-                Caso 3:
-                um ou mais instantes isolados.
+                Instantes isolados.
             */
             else if (
                 dados.tipo_evento ===
@@ -700,7 +1164,8 @@ resultado_python
 
                     const numerica =
                         Number(
-                            dados.solucoes_numericas[i]
+                            dados
+                                .solucoes_numericas[i]
                         );
 
 
@@ -723,9 +1188,7 @@ resultado_python
 
 
             /*
-                Caso 4:
-                SymPy devolveu uma solução
-                simbólica mais complexa.
+                Solução simbólica não reduzida.
             */
             else {
 
@@ -749,13 +1212,17 @@ resultado_python
         }
 
 
+        /*
+            ====================================================
+            MOSTRAR RESULTADO NA PÁGINA
+            ====================================================
+        */
         resultado.innerHTML =
             html;
 
 
         /*
-            Libera o objeto Python mantido
-            temporariamente pelo Pyodide.
+            Libera memória do objeto Python.
         */
         resposta.destroy();
 
@@ -770,12 +1237,12 @@ resultado_python
         resultado.innerHTML = `
             <p>
                 Não foi possível interpretar
-                ou resolver a função fornecida.
+                ou resolver os dados fornecidos.
             </p>
 
             <p>
-                Verifique a expressão,
-                o domínio e o valor procurado.
+                Verifique a função,
+                o domínio e os valores informados.
             </p>
         `;
     }
@@ -783,18 +1250,16 @@ resultado_python
 
 
 /*
-    Ao mudar a pergunta,
-    mostramos ou escondemos
-    o campo de valor-alvo.
+    Mudança da opção do menu.
 */
 seletorAcao.addEventListener(
     "change",
-    atualizarCampoAlvo
+    atualizarCampoExtra
 );
 
 
 /*
-    Clique no botão principal.
+    Botão principal.
 */
 botao.addEventListener(
     "click",
@@ -803,12 +1268,12 @@ botao.addEventListener(
 
 
 /*
-    Configura a tela inicial.
+    Configuração inicial da interface.
 */
-atualizarCampoAlvo();
+atualizarCampoExtra();
 
 
 /*
-    Inicializa Python e SymPy.
+    Inicialização do motor.
 */
 iniciarPython();
