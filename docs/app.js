@@ -1,45 +1,119 @@
-const botao = document.getElementById("calcular");
-const resultado = document.getElementById("resultado");
-const status = document.getElementById("status");
+const botao =
+    document.getElementById("calcular");
 
-const seletorAcao = document.getElementById("acao");
+const resultado =
+    document.getElementById("resultado");
+
+const status =
+    document.getElementById("status");
+
+const seletorAcao =
+    document.getElementById("acao");
+
 const entradaExtraContainer =
-    document.getElementById("entrada-extra-container");
+    document.getElementById(
+        "entrada-extra-container"
+    );
+
 const entradaExtraLabel =
-    document.getElementById("entrada-extra-label");
+    document.getElementById(
+        "entrada-extra-label"
+    );
+
 const entradaExtra =
-    document.getElementById("entrada-extra");
+    document.getElementById(
+        "entrada-extra"
+    );
+
 const entradaExtraAjuda =
-    document.getElementById("entrada-extra-ajuda");
+    document.getElementById(
+        "entrada-extra-ajuda"
+    );
+
+const intervaloContainer =
+    document.getElementById(
+        "intervalo-container"
+    );
+
+const intervaloT1 =
+    document.getElementById(
+        "intervalo-t1"
+    );
+
+const intervaloT2 =
+    document.getElementById(
+        "intervalo-t2"
+    );
+
 
 let pyodide = null;
 
 
+/*
+    ============================================================
+    INICIALIZAÇÃO
+    ============================================================
+*/
+
 async function iniciarPython() {
 
-    status.textContent = "Carregando Python...";
+    status.textContent =
+        "Carregando Python...";
 
-    pyodide = await loadPyodide();
+    pyodide =
+        await loadPyodide();
 
-    status.textContent = "Carregando SymPy...";
+    status.textContent =
+        "Carregando SymPy...";
 
-    await pyodide.loadPackage("sympy");
+    await pyodide.loadPackage(
+        "sympy"
+    );
 
-    status.textContent = "Motor Python/SymPy pronto.";
+    status.textContent =
+        "Motor Python/SymPy pronto.";
 
     botao.disabled = false;
-    botao.textContent = "Calcular";
+
+    botao.textContent =
+        "Calcular";
 }
 
 
-function atualizarCampoExtra() {
+/*
+    ============================================================
+    INTERFACE
+    ============================================================
 
-    const acao = seletorAcao.value;
+    Há agora três tipos de operações:
+
+    1. Sem entrada extra:
+       modelo, parar, extremos.
+
+    2. Uma entrada:
+       avaliar, posição, velocidade, aceleração.
+
+    3. Duas entradas:
+       análise em intervalo t1 -> t2.
+*/
+
+function atualizarCamposExtras() {
+
+    const acao =
+        seletorAcao.value;
+
+
+    entradaExtraContainer.hidden =
+        true;
+
+    intervaloContainer.hidden =
+        true;
 
 
     if (acao === "avaliar") {
 
-        entradaExtraContainer.hidden = false;
+        entradaExtraContainer.hidden =
+            false;
 
         entradaExtraLabel.textContent =
             "Instante t₀:";
@@ -53,7 +127,8 @@ function atualizarCampoExtra() {
 
     if (acao === "posicao") {
 
-        entradaExtraContainer.hidden = false;
+        entradaExtraContainer.hidden =
+            false;
 
         entradaExtraLabel.textContent =
             "Posição procurada x (m):";
@@ -67,7 +142,8 @@ function atualizarCampoExtra() {
 
     if (acao === "velocidade") {
 
-        entradaExtraContainer.hidden = false;
+        entradaExtraContainer.hidden =
+            false;
 
         entradaExtraLabel.textContent =
             "Velocidade procurada v (m/s):";
@@ -81,7 +157,8 @@ function atualizarCampoExtra() {
 
     if (acao === "aceleracao") {
 
-        entradaExtraContainer.hidden = false;
+        entradaExtraContainer.hidden =
+            false;
 
         entradaExtraLabel.textContent =
             "Aceleração procurada a (m/s²):";
@@ -93,15 +170,21 @@ function atualizarCampoExtra() {
     }
 
 
-    /*
-        modelo
-        parar
-        extremos_posicao
-        extremos_velocidade
-    */
-    entradaExtraContainer.hidden = true;
+    if (acao === "medias_intervalo") {
+
+        intervaloContainer.hidden =
+            false;
+
+        return;
+    }
 }
 
+
+/*
+    ============================================================
+    VALIDAÇÕES
+    ============================================================
+*/
 
 function funcaoValida(texto) {
 
@@ -115,7 +198,7 @@ function funcaoValida(texto) {
 }
 
 
-function valorExtraValido(texto) {
+function valorNumericoValido(texto) {
 
     const padrao =
         /^[0-9+\-*/().\s]+$/;
@@ -126,6 +209,12 @@ function valorExtraValido(texto) {
     );
 }
 
+
+/*
+    ============================================================
+    FORMATAÇÃO
+    ============================================================
+*/
 
 function formatarValor(
     exato,
@@ -187,7 +276,8 @@ function listaTempos(
     numericos
 ) {
 
-    let html = "<ul>";
+    let html =
+        "<ul>";
 
 
     for (
@@ -209,11 +299,19 @@ function listaTempos(
     }
 
 
-    html += "</ul>";
+    html +=
+        "</ul>";
+
 
     return html;
 }
 
+
+/*
+    ============================================================
+    FUNÇÃO PRINCIPAL
+    ============================================================
+*/
 
 async function calcularMovimento() {
 
@@ -243,12 +341,19 @@ async function calcularMovimento() {
     const valorExtraTexto =
         entradaExtra.value.trim();
 
+    const intervaloT1Texto =
+        intervaloT1.value.trim();
+
+    const intervaloT2Texto =
+        intervaloT2.value.trim();
+
 
     /*
         --------------------------------------------------------
-        VALIDAÇÃO DA FUNÇÃO
+        FUNÇÃO x(t)
         --------------------------------------------------------
     */
+
     if (!funcaoValida(funcao)) {
 
         resultado.innerHTML = `
@@ -269,9 +374,10 @@ async function calcularMovimento() {
 
     /*
         --------------------------------------------------------
-        VALIDAÇÃO DO DOMÍNIO
+        DOMÍNIO FÍSICO
         --------------------------------------------------------
     */
+
     if (
         !Number.isFinite(tInicial) ||
         !Number.isFinite(tFinal)
@@ -301,6 +407,12 @@ async function calcularMovimento() {
     }
 
 
+    /*
+        --------------------------------------------------------
+        UMA ENTRADA EXTRA
+        --------------------------------------------------------
+    */
+
     const precisaValorExtra =
         acao === "avaliar" ||
         acao === "posicao" ||
@@ -310,7 +422,7 @@ async function calcularMovimento() {
 
     if (
         precisaValorExtra &&
-        !valorExtraValido(
+        !valorNumericoValido(
             valorExtraTexto
         )
     ) {
@@ -332,9 +444,49 @@ async function calcularMovimento() {
 
     /*
         --------------------------------------------------------
-        ENVIO DOS DADOS AO PYTHON
+        INTERVALO t1 -> t2
         --------------------------------------------------------
     */
+
+    const precisaIntervalo =
+        acao === "medias_intervalo";
+
+
+    if (
+        precisaIntervalo &&
+        (
+            !valorNumericoValido(
+                intervaloT1Texto
+            )
+            ||
+            !valorNumericoValido(
+                intervaloT2Texto
+            )
+        )
+    ) {
+
+        resultado.innerHTML = `
+            <p>
+                Erro: informe valores válidos
+                para t₁ e t₂.
+            </p>
+
+            <p>
+                Exemplos:
+                0, 3, 1/2 ou 2.5
+            </p>
+        `;
+
+        return;
+    }
+
+
+    /*
+        --------------------------------------------------------
+        JAVASCRIPT -> PYTHON
+        --------------------------------------------------------
+    */
+
     pyodide.globals.set(
         "funcao_js",
         funcao
@@ -359,6 +511,20 @@ async function calcularMovimento() {
         "valor_extra_js",
         precisaValorExtra
             ? valorExtraTexto
+            : ""
+    );
+
+    pyodide.globals.set(
+        "intervalo_t1_js",
+        precisaIntervalo
+            ? intervaloT1Texto
+            : ""
+    );
+
+    pyodide.globals.set(
+        "intervalo_t2_js",
+        precisaIntervalo
+            ? intervaloT2Texto
             : ""
     );
 
@@ -442,7 +608,7 @@ dominio = sp.Interval(
 
 
 # =============================================================
-# 5. AÇÃO ESCOLHIDA
+# 5. AÇÃO
 # =============================================================
 
 acao = str(
@@ -451,7 +617,7 @@ acao = str(
 
 
 # =============================================================
-# 6. VARIÁVEIS GERAIS DE RESULTADO
+# 6. VARIÁVEIS GERAIS
 # =============================================================
 
 tipo_operacao = ""
@@ -464,7 +630,7 @@ alvo = None
 
 
 # =============================================================
-# 7. RESULTADOS DOS EVENTOS
+# 7. EVENTOS
 # =============================================================
 
 tipo_evento = "nao_aplicavel"
@@ -475,7 +641,7 @@ solucoes_numericas = []
 
 
 # =============================================================
-# 8. RESULTADOS DA AVALIAÇÃO EM t0
+# 8. AVALIAÇÃO EM t0
 # =============================================================
 
 instante_exato = ""
@@ -500,7 +666,7 @@ a_avaliado_numerico = None
 
 
 # =============================================================
-# 9. RESULTADOS DOS EXTREMOS
+# 9. EXTREMOS
 # =============================================================
 
 extremos_tipo = "nao_aplicavel"
@@ -529,14 +695,63 @@ maximo_tempos_numericos = []
 
 
 # =============================================================
-# 10. FUNÇÕES AUXILIARES
+# 10. MÉDIAS EM INTERVALO
+# =============================================================
+
+medias_valida = False
+
+medias_mensagem = ""
+
+media_t1_exato = ""
+
+media_t2_exato = ""
+
+media_t1_numerico = None
+
+media_t2_numerico = None
+
+delta_t_exato = ""
+
+delta_t_numerico = None
+
+x_t1_exato = ""
+
+x_t2_exato = ""
+
+x_t1_numerico = None
+
+x_t2_numerico = None
+
+v_t1_exato = ""
+
+v_t2_exato = ""
+
+v_t1_numerico = None
+
+v_t2_numerico = None
+
+deslocamento_exato = ""
+
+deslocamento_numerico = None
+
+velocidade_media_exato = ""
+
+velocidade_media_numerico = None
+
+aceleracao_media_exato = ""
+
+aceleracao_media_numerico = None
+
+
+# =============================================================
+# 11. FUNÇÕES AUXILIARES
 # =============================================================
 
 def numero_real(expr):
 
-    valor = sp.N(expr)
-
-    return float(valor)
+    return float(
+        sp.N(expr)
+    )
 
 
 def adicionar_candidato(
@@ -616,9 +831,9 @@ def calcular_extremos_globais(
         )
 
 
-        resultado["tipo"] = (
-            "constante"
-        )
+        resultado[
+            "tipo"
+        ] = "constante"
 
         resultado[
             "min_val_exato"
@@ -662,7 +877,6 @@ def calcular_extremos_globais(
     candidatos = []
 
 
-    # As fronteiras sempre devem ser avaliadas.
     adicionar_candidato(
         candidatos,
         t_inicial_exato
@@ -674,18 +888,10 @@ def calcular_extremos_globais(
     )
 
 
-    # ---------------------------------------------------------
-    # DERIVADA SEM RAÍZES
-    # ---------------------------------------------------------
-
     if estacionarios == sp.EmptySet:
 
         pass
 
-
-    # ---------------------------------------------------------
-    # CONJUNTO FINITO DE PONTOS CRÍTICOS
-    # ---------------------------------------------------------
 
     elif isinstance(
         estacionarios,
@@ -700,10 +906,6 @@ def calcular_extremos_globais(
             )
 
 
-    # ---------------------------------------------------------
-    # TODO O DOMÍNIO É ESTACIONÁRIO
-    # ---------------------------------------------------------
-
     elif estacionarios == dominio:
 
         valor = sp.simplify(
@@ -714,9 +916,9 @@ def calcular_extremos_globais(
         )
 
 
-        resultado["tipo"] = (
-            "constante"
-        )
+        resultado[
+            "tipo"
+        ] = "constante"
 
         resultado[
             "min_val_exato"
@@ -746,15 +948,11 @@ def calcular_extremos_globais(
         return resultado
 
 
-    # ---------------------------------------------------------
-    # SOLUÇÃO SIMBÓLICA NÃO FINITA
-    # ---------------------------------------------------------
-
     else:
 
-        resultado["tipo"] = (
-            "limitacao"
-        )
+        resultado[
+            "tipo"
+        ] = "limitacao"
 
         resultado[
             "mensagem"
@@ -768,10 +966,6 @@ def calcular_extremos_globais(
         return resultado
 
 
-    # ---------------------------------------------------------
-    # ORDENA OS CANDIDATOS POR TEMPO
-    # ---------------------------------------------------------
-
     candidatos = sorted(
         candidatos,
         key=numero_real
@@ -780,10 +974,6 @@ def calcular_extremos_globais(
 
     valores = []
 
-
-    # ---------------------------------------------------------
-    # AVALIA A GRANDEZA EM TODOS OS CANDIDATOS
-    # ---------------------------------------------------------
 
     for ponto in candidatos:
 
@@ -817,10 +1007,6 @@ def calcular_extremos_globais(
         })
 
 
-    # ---------------------------------------------------------
-    # VALORES MÍNIMO E MÁXIMO
-    # ---------------------------------------------------------
-
     min_num = min(
         item["valor_num"]
         for item
@@ -834,7 +1020,6 @@ def calcular_extremos_globais(
     )
 
 
-    # Tolerância usada apenas para detectar empates numéricos.
     tolerancia_min = (
         1e-10
         *
@@ -888,10 +1073,6 @@ def calcular_extremos_globais(
     ]
 
 
-    # ---------------------------------------------------------
-    # RESULTADO DO MÍNIMO
-    # ---------------------------------------------------------
-
     resultado[
         "min_val_exato"
     ] = str(
@@ -926,10 +1107,6 @@ def calcular_extremos_globais(
         in min_itens
     ]
 
-
-    # ---------------------------------------------------------
-    # RESULTADO DO MÁXIMO
-    # ---------------------------------------------------------
 
     resultado[
         "max_val_exato"
@@ -970,7 +1147,7 @@ def calcular_extremos_globais(
 
 
 # =============================================================
-# 11. MODO: MOSTRAR MODELO
+# 12. MOSTRAR MODELO
 # =============================================================
 
 if acao == "modelo":
@@ -979,14 +1156,12 @@ if acao == "modelo":
 
 
 # =============================================================
-# 12. MODO: AVALIAR ESTADO
+# 13. AVALIAR ESTADO EM t0
 # =============================================================
 
 elif acao == "avaliar":
 
-    tipo_operacao = (
-        "avaliacao"
-    )
+    tipo_operacao = "avaliacao"
 
 
     instante = sp.sympify(
@@ -1018,13 +1193,9 @@ elif acao == "avaliar":
 
 
     if (
-        instante_num
-        <
-        t_inicial
+        instante_num < t_inicial
         or
-        instante_num
-        >
-        t_final
+        instante_num > t_final
     ):
 
         avaliacao_valida = False
@@ -1095,7 +1266,7 @@ elif acao == "avaliar":
 
 
 # =============================================================
-# 13. EVENTO DE POSIÇÃO
+# 14. EVENTO DE POSIÇÃO
 # =============================================================
 
 elif acao == "posicao":
@@ -1114,7 +1285,7 @@ elif acao == "posicao":
 
 
 # =============================================================
-# 14. EVENTO DE VELOCIDADE
+# 15. EVENTO DE VELOCIDADE
 # =============================================================
 
 elif acao == "velocidade":
@@ -1133,7 +1304,7 @@ elif acao == "velocidade":
 
 
 # =============================================================
-# 15. EVENTO DE ACELERAÇÃO
+# 16. EVENTO DE ACELERAÇÃO
 # =============================================================
 
 elif acao == "aceleracao":
@@ -1152,7 +1323,7 @@ elif acao == "aceleracao":
 
 
 # =============================================================
-# 16. QUANDO A PARTÍCULA PARA
+# 17. PARTÍCULA PARA
 # =============================================================
 
 elif acao == "parar":
@@ -1169,14 +1340,12 @@ elif acao == "parar":
 
 
 # =============================================================
-# 17. EXTREMOS DE POSIÇÃO
+# 18. EXTREMOS DE POSIÇÃO
 # =============================================================
 
 elif acao == "extremos_posicao":
 
-    tipo_operacao = (
-        "extremos"
-    )
+    tipo_operacao = "extremos"
 
     extremos_grandeza_nome = (
         "posição x(t)"
@@ -1185,8 +1354,6 @@ elif acao == "extremos_posicao":
     extremos_unidade = "m"
 
 
-    # Para extremos de x(t),
-    # procuramos onde dx/dt = v(t) = 0.
     dados_extremos = (
         calcular_extremos_globais(
             x,
@@ -1196,14 +1363,12 @@ elif acao == "extremos_posicao":
 
 
 # =============================================================
-# 18. EXTREMOS DE VELOCIDADE
+# 19. EXTREMOS DE VELOCIDADE
 # =============================================================
 
 elif acao == "extremos_velocidade":
 
-    tipo_operacao = (
-        "extremos"
-    )
+    tipo_operacao = "extremos"
 
     extremos_grandeza_nome = (
         "velocidade v(t)"
@@ -1212,14 +1377,278 @@ elif acao == "extremos_velocidade":
     extremos_unidade = "m/s"
 
 
-    # Para extremos de v(t),
-    # procuramos onde dv/dt = a(t) = 0.
     dados_extremos = (
         calcular_extremos_globais(
             v,
             a
         )
     )
+
+
+# =============================================================
+# 20. DESLOCAMENTO E MÉDIAS EM INTERVALO
+# =============================================================
+
+elif acao == "medias_intervalo":
+
+    tipo_operacao = "medias"
+
+
+    t1 = sp.sympify(
+        intervalo_t1_js
+    )
+
+    t2 = sp.sympify(
+        intervalo_t2_js
+    )
+
+
+    if (
+        t1.free_symbols
+        or
+        t2.free_symbols
+    ):
+
+        raise ValueError(
+            "Os instantes do intervalo "
+            "não podem conter variáveis."
+        )
+
+
+    t1_num = numero_real(
+        t1
+    )
+
+    t2_num = numero_real(
+        t2
+    )
+
+
+    media_t1_exato = str(
+        sp.simplify(
+            t1
+        )
+    )
+
+    media_t2_exato = str(
+        sp.simplify(
+            t2
+        )
+    )
+
+    media_t1_numerico = (
+        t1_num
+    )
+
+    media_t2_numerico = (
+        t2_num
+    )
+
+
+    # ---------------------------------------------------------
+    # VERIFICAÇÃO DO DOMÍNIO
+    # ---------------------------------------------------------
+
+    if (
+        t1_num < t_inicial
+        or
+        t1_num > t_final
+        or
+        t2_num < t_inicial
+        or
+        t2_num > t_final
+    ):
+
+        medias_valida = False
+
+        medias_mensagem = (
+            "O intervalo informado ultrapassa "
+            "o domínio físico do movimento."
+        )
+
+
+    # ---------------------------------------------------------
+    # ORDEM DOS INSTANTES
+    # ---------------------------------------------------------
+
+    elif t2_num <= t1_num:
+
+        medias_valida = False
+
+        medias_mensagem = (
+            "O instante t₂ deve ser maior "
+            "que o instante t₁."
+        )
+
+
+    else:
+
+        medias_valida = True
+
+
+        # -----------------------------------------------------
+        # ESTADO NAS EXTREMIDADES
+        # -----------------------------------------------------
+
+        x1 = sp.simplify(
+            x.subs(
+                t,
+                t1
+            )
+        )
+
+        x2 = sp.simplify(
+            x.subs(
+                t,
+                t2
+            )
+        )
+
+        v1 = sp.simplify(
+            v.subs(
+                t,
+                t1
+            )
+        )
+
+        v2 = sp.simplify(
+            v.subs(
+                t,
+                t2
+            )
+        )
+
+
+        # -----------------------------------------------------
+        # INTERVALO DE TEMPO
+        # -----------------------------------------------------
+
+        delta_t = sp.simplify(
+            t2 - t1
+        )
+
+
+        # -----------------------------------------------------
+        # DESLOCAMENTO
+        # -----------------------------------------------------
+
+        deslocamento = sp.simplify(
+            x2 - x1
+        )
+
+
+        # -----------------------------------------------------
+        # VELOCIDADE MÉDIA
+        # -----------------------------------------------------
+
+        velocidade_media = sp.simplify(
+            deslocamento
+            /
+            delta_t
+        )
+
+
+        # -----------------------------------------------------
+        # ACELERAÇÃO MÉDIA
+        # -----------------------------------------------------
+
+        aceleracao_media = sp.simplify(
+            (
+                v2 - v1
+            )
+            /
+            delta_t
+        )
+
+
+        # -----------------------------------------------------
+        # RESULTADOS EXATOS
+        # -----------------------------------------------------
+
+        delta_t_exato = str(
+            delta_t
+        )
+
+        x_t1_exato = str(
+            x1
+        )
+
+        x_t2_exato = str(
+            x2
+        )
+
+        v_t1_exato = str(
+            v1
+        )
+
+        v_t2_exato = str(
+            v2
+        )
+
+        deslocamento_exato = str(
+            deslocamento
+        )
+
+        velocidade_media_exato = str(
+            velocidade_media
+        )
+
+        aceleracao_media_exato = str(
+            aceleracao_media
+        )
+
+
+        # -----------------------------------------------------
+        # RESULTADOS NUMÉRICOS
+        # -----------------------------------------------------
+
+        delta_t_numerico = (
+            numero_real(
+                delta_t
+            )
+        )
+
+        x_t1_numerico = (
+            numero_real(
+                x1
+            )
+        )
+
+        x_t2_numerico = (
+            numero_real(
+                x2
+            )
+        )
+
+        v_t1_numerico = (
+            numero_real(
+                v1
+            )
+        )
+
+        v_t2_numerico = (
+            numero_real(
+                v2
+            )
+        )
+
+        deslocamento_numerico = (
+            numero_real(
+                deslocamento
+            )
+        )
+
+        velocidade_media_numerico = (
+            numero_real(
+                velocidade_media
+            )
+        )
+
+        aceleracao_media_numerico = (
+            numero_real(
+                aceleracao_media
+            )
+        )
 
 
 else:
@@ -1230,7 +1659,7 @@ else:
 
 
 # =============================================================
-# 19. RESOLUÇÃO DOS EVENTOS
+# 21. RESOLUÇÃO DOS EVENTOS
 # =============================================================
 
 if tipo_operacao == "evento":
@@ -1251,9 +1680,7 @@ if tipo_operacao == "evento":
 
     if solucoes == sp.EmptySet:
 
-        tipo_evento = (
-            "nenhuma"
-        )
+        tipo_evento = "nenhuma"
 
 
     elif solucoes == dominio:
@@ -1268,9 +1695,7 @@ if tipo_operacao == "evento":
         sp.FiniteSet
     ):
 
-        tipo_evento = (
-            "pontos"
-        )
+        tipo_evento = "pontos"
 
 
         solucoes_ordenadas = sorted(
@@ -1319,7 +1744,7 @@ if tipo_operacao == "evento":
 
 
 # =============================================================
-# 20. RESULTADOS DOS EXTREMOS
+# 22. RESULTADOS DOS EXTREMOS
 # =============================================================
 
 if tipo_operacao == "extremos":
@@ -1388,24 +1813,30 @@ if tipo_operacao == "extremos":
 
 
 # =============================================================
-# 21. RESULTADO ENVIADO AO JAVASCRIPT
+# 23. OBJETO DEVOLVIDO AO JAVASCRIPT
 # =============================================================
 
 resultado_python = {
 
     "x":
         str(
-            sp.factor(x)
+            sp.factor(
+                x
+            )
         ),
 
     "v":
         str(
-            sp.factor(v)
+            sp.factor(
+                v
+            )
         ),
 
     "a":
         str(
-            sp.factor(a)
+            sp.factor(
+                a
+            )
         ),
 
     "t_inicial":
@@ -1422,7 +1853,7 @@ resultado_python = {
 
 
     # ---------------------------------------------------------
-    # Eventos
+    # EVENTOS
     # ---------------------------------------------------------
 
     "grandeza_nome":
@@ -1453,7 +1884,7 @@ resultado_python = {
 
 
     # ---------------------------------------------------------
-    # Avaliação
+    # AVALIAÇÃO
     # ---------------------------------------------------------
 
     "instante_exato":
@@ -1488,7 +1919,7 @@ resultado_python = {
 
 
     # ---------------------------------------------------------
-    # Extremos
+    # EXTREMOS
     # ---------------------------------------------------------
 
     "extremos_tipo":
@@ -1525,7 +1956,78 @@ resultado_python = {
         maximo_tempos_exatos,
 
     "maximo_tempos_numericos":
-        maximo_tempos_numericos
+        maximo_tempos_numericos,
+
+
+    # ---------------------------------------------------------
+    # MÉDIAS
+    # ---------------------------------------------------------
+
+    "medias_valida":
+        medias_valida,
+
+    "medias_mensagem":
+        medias_mensagem,
+
+    "media_t1_exato":
+        media_t1_exato,
+
+    "media_t2_exato":
+        media_t2_exato,
+
+    "media_t1_numerico":
+        media_t1_numerico,
+
+    "media_t2_numerico":
+        media_t2_numerico,
+
+    "delta_t_exato":
+        delta_t_exato,
+
+    "delta_t_numerico":
+        delta_t_numerico,
+
+    "x_t1_exato":
+        x_t1_exato,
+
+    "x_t2_exato":
+        x_t2_exato,
+
+    "x_t1_numerico":
+        x_t1_numerico,
+
+    "x_t2_numerico":
+        x_t2_numerico,
+
+    "v_t1_exato":
+        v_t1_exato,
+
+    "v_t2_exato":
+        v_t2_exato,
+
+    "v_t1_numerico":
+        v_t1_numerico,
+
+    "v_t2_numerico":
+        v_t2_numerico,
+
+    "deslocamento_exato":
+        deslocamento_exato,
+
+    "deslocamento_numerico":
+        deslocamento_numerico,
+
+    "velocidade_media_exato":
+        velocidade_media_exato,
+
+    "velocidade_media_numerico":
+        velocidade_media_numerico,
+
+    "aceleracao_media_exato":
+        aceleracao_media_exato,
+
+    "aceleracao_media_numerico":
+        aceleracao_media_numerico
 }
 
 
@@ -1538,6 +2040,7 @@ resultado_python
             PYTHON -> JAVASCRIPT
             ====================================================
         */
+
         const dados =
             resposta.toJs({
                 dict_converter:
@@ -1550,6 +2053,7 @@ resultado_python
             BLOCO COMUM
             ====================================================
         */
+
         let html = `
             <p>
                 <strong>Domínio:</strong>
@@ -1580,6 +2084,7 @@ resultado_python
             AVALIAÇÃO EM t0
             ====================================================
         */
+
         if (
             dados.tipo_operacao ===
             "avaliacao"
@@ -1666,6 +2171,7 @@ resultado_python
             EVENTOS
             ====================================================
         */
+
         if (
             dados.tipo_operacao ===
             "evento"
@@ -1776,9 +2282,10 @@ resultado_python
 
         /*
             ====================================================
-            EXTREMOS GLOBAIS
+            EXTREMOS
             ====================================================
         */
+
         if (
             dados.tipo_operacao ===
             "extremos"
@@ -1797,10 +2304,6 @@ resultado_python
             `;
 
 
-            /*
-                Caso em que o SymPy não conseguiu
-                reduzir os pontos críticos.
-            */
             if (
                 dados.extremos_tipo ===
                 "limitacao"
@@ -1814,9 +2317,6 @@ resultado_python
             }
 
 
-            /*
-                Grandeza constante.
-            */
             else if (
                 dados.extremos_tipo ===
                 "constante"
@@ -1864,9 +2364,6 @@ resultado_python
             }
 
 
-            /*
-                Extremos determinados normalmente.
-            */
             else {
 
                 html += `
@@ -1924,6 +2421,160 @@ resultado_python
         }
 
 
+        /*
+            ====================================================
+            DESLOCAMENTO E MÉDIAS
+            ====================================================
+        */
+
+        if (
+            dados.tipo_operacao ===
+            "medias"
+        ) {
+
+            html += `
+                <hr>
+
+                <p>
+                    <strong>
+                        Intervalo analisado:
+                    </strong>
+
+                    ${dados.media_t1_exato}
+                    ≤ t ≤
+                    ${dados.media_t2_exato}
+                    s
+                </p>
+            `;
+
+
+            if (
+                !dados.medias_valida
+            ) {
+
+                html += `
+                    <p>
+                        ${dados.medias_mensagem}
+                    </p>
+                `;
+            }
+
+
+            else {
+
+                html += `
+                    <p>
+                        <strong>
+                            Estado nas extremidades:
+                        </strong>
+                    </p>
+
+                    <p>
+                        x(${dados.media_t1_exato})
+                        =
+                        ${formatarValor(
+                            dados.x_t1_exato,
+                            Number(
+                                dados.x_t1_numerico
+                            ),
+                            "m"
+                        )}
+                    </p>
+
+                    <p>
+                        x(${dados.media_t2_exato})
+                        =
+                        ${formatarValor(
+                            dados.x_t2_exato,
+                            Number(
+                                dados.x_t2_numerico
+                            ),
+                            "m"
+                        )}
+                    </p>
+
+                    <p>
+                        v(${dados.media_t1_exato})
+                        =
+                        ${formatarValor(
+                            dados.v_t1_exato,
+                            Number(
+                                dados.v_t1_numerico
+                            ),
+                            "m/s"
+                        )}
+                    </p>
+
+                    <p>
+                        v(${dados.media_t2_exato})
+                        =
+                        ${formatarValor(
+                            dados.v_t2_exato,
+                            Number(
+                                dados.v_t2_numerico
+                            ),
+                            "m/s"
+                        )}
+                    </p>
+
+                    <p>
+                        <strong>Δt:</strong>
+
+                        ${formatarValor(
+                            dados.delta_t_exato,
+                            Number(
+                                dados.delta_t_numerico
+                            ),
+                            "s"
+                        )}
+                    </p>
+
+                    <p>
+                        <strong>
+                            Deslocamento Δx:
+                        </strong>
+
+                        ${formatarValor(
+                            dados.deslocamento_exato,
+                            Number(
+                                dados.deslocamento_numerico
+                            ),
+                            "m"
+                        )}
+                    </p>
+
+                    <p>
+                        <strong>
+                            Velocidade média:
+                        </strong>
+
+                        ${formatarValor(
+                            dados.velocidade_media_exato,
+                            Number(
+                                dados.velocidade_media_numerico
+                            ),
+                            "m/s"
+                        )}
+                    </p>
+
+                    <p>
+                        <strong>
+                            Aceleração média:
+                        </strong>
+
+                        ${formatarValor(
+                            dados.aceleracao_media_exato,
+                            Number(
+                                dados.aceleracao_media_numerico
+                            ),
+                            "m/s²"
+                        )}
+                    </p>
+                `;
+            }
+        }
+
+
         resultado.innerHTML =
             html;
 
@@ -1953,9 +2604,15 @@ resultado_python
 }
 
 
+/*
+    ============================================================
+    EVENTOS DA INTERFACE
+    ============================================================
+*/
+
 seletorAcao.addEventListener(
     "change",
-    atualizarCampoExtra
+    atualizarCamposExtras
 );
 
 
@@ -1965,7 +2622,7 @@ botao.addEventListener(
 );
 
 
-atualizarCampoExtra();
+atualizarCamposExtras();
 
 
 iniciarPython();

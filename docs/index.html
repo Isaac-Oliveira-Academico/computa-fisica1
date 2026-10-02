@@ -104,10 +104,18 @@
                     Máximos e mínimos de velocidade
                 </option>
 
+                <option value="medias_intervalo">
+                    Deslocamento e médias em um intervalo
+                </option>
+
             </select>
 
             <br><br>
 
+            <!--
+                Campo usado por operações que precisam
+                de apenas um valor adicional.
+            -->
             <div id="entrada-extra-container" hidden>
 
                 <label
@@ -123,6 +131,42 @@
                 >
 
                 <p id="entrada-extra-ajuda">
+                </p>
+
+            </div>
+
+            <!--
+                Campos usados pelas operações
+                que precisam de um intervalo t1 -> t2.
+            -->
+            <div id="intervalo-container" hidden>
+
+                <p>
+                    Intervalo de análise:
+                </p>
+
+                <label for="intervalo-t1">
+                    Instante t₁:
+                </label>
+
+                <input
+                    id="intervalo-t1"
+                    type="text"
+                    value="0"
+                >
+
+                <label for="intervalo-t2">
+                    Instante t₂:
+                </label>
+
+                <input
+                    id="intervalo-t2"
+                    type="text"
+                    value="1"
+                >
+
+                <p>
+                    Exemplos: 0, 3, 1/2 ou 2.5
                 </p>
 
             </div>
