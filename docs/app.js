@@ -3,96 +3,43 @@ const resultado = document.getElementById("resultado");
 const status = document.getElementById("status");
 
 const seletorAcao = document.getElementById("acao");
-
 const entradaExtraContainer =
     document.getElementById("entrada-extra-container");
-
 const entradaExtraLabel =
     document.getElementById("entrada-extra-label");
-
 const entradaExtra =
     document.getElementById("entrada-extra");
-
 const entradaExtraAjuda =
     document.getElementById("entrada-extra-ajuda");
-
 
 let pyodide = null;
 
 
-/*
-    ------------------------------------------------------------
-    INICIALIZAÇÃO DO PYTHON
-    ------------------------------------------------------------
-
-    Pyodide permite executar Python dentro do navegador.
-
-    Depois carregamos SymPy, que será responsável
-    pelos cálculos simbólicos.
-*/
 async function iniciarPython() {
 
-    status.textContent =
-        "Carregando Python...";
+    status.textContent = "Carregando Python...";
 
-    pyodide =
-        await loadPyodide();
+    pyodide = await loadPyodide();
 
-    status.textContent =
-        "Carregando SymPy...";
+    status.textContent = "Carregando SymPy...";
 
-    await pyodide.loadPackage(
-        "sympy"
-    );
+    await pyodide.loadPackage("sympy");
 
-    status.textContent =
-        "Motor Python/SymPy pronto.";
+    status.textContent = "Motor Python/SymPy pronto.";
 
     botao.disabled = false;
-
-    botao.textContent =
-        "Calcular";
+    botao.textContent = "Calcular";
 }
 
 
-/*
-    ------------------------------------------------------------
-    CONFIGURAÇÃO DA INTERFACE
-    ------------------------------------------------------------
-
-    Algumas operações precisam de uma entrada extra.
-
-    Exemplos:
-
-    avaliar:
-        t0 = 3
-
-    posição:
-        x(t) = 300
-
-    velocidade:
-        v(t) = 20
-
-    aceleração:
-        a(t) = -9.8
-
-    Já as opções:
-
-        modelo
-        parar
-
-    não precisam desse campo.
-*/
 function atualizarCampoExtra() {
 
-    const acao =
-        seletorAcao.value;
+    const acao = seletorAcao.value;
 
 
     if (acao === "avaliar") {
 
-        entradaExtraContainer.hidden =
-            false;
+        entradaExtraContainer.hidden = false;
 
         entradaExtraLabel.textContent =
             "Instante t₀:";
@@ -106,8 +53,7 @@ function atualizarCampoExtra() {
 
     if (acao === "posicao") {
 
-        entradaExtraContainer.hidden =
-            false;
+        entradaExtraContainer.hidden = false;
 
         entradaExtraLabel.textContent =
             "Posição procurada x (m):";
@@ -121,8 +67,7 @@ function atualizarCampoExtra() {
 
     if (acao === "velocidade") {
 
-        entradaExtraContainer.hidden =
-            false;
+        entradaExtraContainer.hidden = false;
 
         entradaExtraLabel.textContent =
             "Velocidade procurada v (m/s):";
@@ -136,8 +81,7 @@ function atualizarCampoExtra() {
 
     if (acao === "aceleracao") {
 
-        entradaExtraContainer.hidden =
-            false;
+        entradaExtraContainer.hidden = false;
 
         entradaExtraLabel.textContent =
             "Aceleração procurada a (m/s²):";
@@ -150,28 +94,15 @@ function atualizarCampoExtra() {
 
 
     /*
-        modelo e parar
+        modelo
+        parar
+        extremos_posicao
+        extremos_velocidade
     */
-    entradaExtraContainer.hidden =
-        true;
+    entradaExtraContainer.hidden = true;
 }
 
 
-/*
-    ------------------------------------------------------------
-    VALIDAÇÃO DA FUNÇÃO x(t)
-    ------------------------------------------------------------
-
-    Nesta fase do projeto aceitamos expressões algébricas
-    simples envolvendo t.
-
-    Exemplos:
-
-        20*t - 5*t**3
-        12*t**2 - 2*t**3
-        15*t**2/2
-        7
-*/
 function funcaoValida(texto) {
 
     const padrao =
@@ -184,20 +115,6 @@ function funcaoValida(texto) {
 }
 
 
-/*
-    ------------------------------------------------------------
-    VALIDAÇÃO DE VALORES NUMÉRICOS SIMBÓLICOS
-    ------------------------------------------------------------
-
-    Permite:
-
-        3
-        -5
-        1/2
-        2.5
-
-    mas não permite variáveis.
-*/
 function valorExtraValido(texto) {
 
     const padrao =
@@ -210,20 +127,6 @@ function valorExtraValido(texto) {
 }
 
 
-/*
-    ------------------------------------------------------------
-    FORMATAÇÃO DOS RESULTADOS
-    ------------------------------------------------------------
-
-    Se o valor exato for simplesmente um número,
-    mostramos apenas esse valor.
-
-    Se for algo simbólico, como:
-
-        2*sqrt(10)
-
-    mostramos também uma aproximação decimal.
-*/
 function formatarValor(
     exato,
     numerico,
@@ -233,6 +136,7 @@ function formatarValor(
     const valorDireto =
         Number(exato);
 
+
     if (
         Number.isFinite(valorDireto) &&
         Math.abs(
@@ -240,9 +144,7 @@ function formatarValor(
         ) < 1e-12
     ) {
 
-        return `
-            ${exato} ${unidade}
-        `;
+        return `${exato} ${unidade}`;
     }
 
 
@@ -253,20 +155,66 @@ function formatarValor(
 }
 
 
-/*
-    ------------------------------------------------------------
-    FUNÇÃO PRINCIPAL
-    ------------------------------------------------------------
+function formatarTempo(
+    exato,
+    numerico
+) {
 
-    Fluxo:
+    const valorDireto =
+        Number(exato);
 
-    1. Lê os dados da página.
-    2. Valida os dados.
-    3. Envia para Python.
-    4. SymPy constrói x(t), v(t) e a(t).
-    5. Executa a operação física escolhida.
-    6. Devolve os resultados ao JavaScript.
-*/
+
+    if (
+        Number.isFinite(valorDireto) &&
+        Math.abs(
+            valorDireto - numerico
+        ) < 1e-12
+    ) {
+
+        return `t = ${exato} s`;
+    }
+
+
+    return `
+        t = ${numerico.toFixed(9)} s
+        (${exato})
+    `;
+}
+
+
+function listaTempos(
+    exatos,
+    numericos
+) {
+
+    let html = "<ul>";
+
+
+    for (
+        let i = 0;
+        i < numericos.length;
+        i++
+    ) {
+
+        html += `
+            <li>
+                ${formatarTempo(
+                    exatos[i],
+                    Number(
+                        numericos[i]
+                    )
+                )}
+            </li>
+        `;
+    }
+
+
+    html += "</ul>";
+
+    return html;
+}
+
+
 async function calcularMovimento() {
 
     const funcao =
@@ -353,11 +301,6 @@ async function calcularMovimento() {
     }
 
 
-    /*
-        --------------------------------------------------------
-        AÇÕES QUE PRECISAM DE UMA ENTRADA EXTRA
-        --------------------------------------------------------
-    */
     const precisaValorExtra =
         acao === "avaliar" ||
         acao === "posicao" ||
@@ -389,7 +332,7 @@ async function calcularMovimento() {
 
     /*
         --------------------------------------------------------
-        ENVIO DOS DADOS PARA O PYTHON
+        ENVIO DOS DADOS AO PYTHON
         --------------------------------------------------------
     */
     pyodide.globals.set(
@@ -422,11 +365,6 @@ async function calcularMovimento() {
 
     try {
 
-        /*
-            ====================================================
-            PYTHON EXECUTADO DENTRO DO NAVEGADOR
-            ====================================================
-        */
         const resposta =
             await pyodide.runPythonAsync(`
 
@@ -444,7 +382,7 @@ t = sp.symbols(
 
 
 # =============================================================
-# 2. CONSTRUÇÃO DA FUNÇÃO POSIÇÃO
+# 2. FUNÇÃO POSIÇÃO
 # =============================================================
 
 x = sp.sympify(
@@ -455,7 +393,6 @@ x = sp.sympify(
 )
 
 
-# A função só pode depender de t.
 if not x.free_symbols.issubset({t}):
 
     raise ValueError(
@@ -464,7 +401,7 @@ if not x.free_symbols.issubset({t}):
 
 
 # =============================================================
-# 3. CINEMÁTICA DIFERENCIAL
+# 3. VELOCIDADE E ACELERAÇÃO
 # =============================================================
 
 v = sp.diff(
@@ -482,17 +419,25 @@ a = sp.diff(
 # 4. DOMÍNIO FÍSICO
 # =============================================================
 
+t_inicial_exato = sp.Rational(
+    str(t_inicial_js)
+)
+
+t_final_exato = sp.Rational(
+    str(t_final_js)
+)
+
 t_inicial = float(
-    t_inicial_js
+    t_inicial_exato
 )
 
 t_final = float(
-    t_final_js
+    t_final_exato
 )
 
 dominio = sp.Interval(
-    t_inicial,
-    t_final
+    t_inicial_exato,
+    t_final_exato
 )
 
 
@@ -506,7 +451,7 @@ acao = str(
 
 
 # =============================================================
-# 6. VARIÁVEIS DE RESULTADO
+# 6. VARIÁVEIS GERAIS DE RESULTADO
 # =============================================================
 
 tipo_operacao = ""
@@ -517,6 +462,11 @@ unidade = ""
 
 alvo = None
 
+
+# =============================================================
+# 7. RESULTADOS DOS EVENTOS
+# =============================================================
+
 tipo_evento = "nao_aplicavel"
 
 solucoes_exatas = []
@@ -524,7 +474,10 @@ solucoes_exatas = []
 solucoes_numericas = []
 
 
-# Resultados da avaliação em t0
+# =============================================================
+# 8. RESULTADOS DA AVALIAÇÃO EM t0
+# =============================================================
+
 instante_exato = ""
 
 instante_numerico = None
@@ -547,7 +500,477 @@ a_avaliado_numerico = None
 
 
 # =============================================================
-# 7. MODO: APENAS MOSTRAR O MODELO
+# 9. RESULTADOS DOS EXTREMOS
+# =============================================================
+
+extremos_tipo = "nao_aplicavel"
+
+extremos_mensagem = ""
+
+extremos_grandeza_nome = ""
+
+extremos_unidade = ""
+
+minimo_valor_exato = ""
+
+minimo_valor_numerico = None
+
+minimo_tempos_exatos = []
+
+minimo_tempos_numericos = []
+
+maximo_valor_exato = ""
+
+maximo_valor_numerico = None
+
+maximo_tempos_exatos = []
+
+maximo_tempos_numericos = []
+
+
+# =============================================================
+# 10. FUNÇÕES AUXILIARES
+# =============================================================
+
+def numero_real(expr):
+
+    valor = sp.N(expr)
+
+    return float(valor)
+
+
+def adicionar_candidato(
+    lista,
+    candidato
+):
+
+    for existente in lista:
+
+        if (
+            sp.simplify(
+                existente - candidato
+            )
+            == 0
+        ):
+
+            return
+
+
+    lista.append(
+        candidato
+    )
+
+
+def calcular_extremos_globais(
+    expressao,
+    derivada
+):
+
+    resultado = {
+
+        "tipo":
+            "ok",
+
+        "mensagem":
+            "",
+
+        "min_val_exato":
+            "",
+
+        "min_val_num":
+            None,
+
+        "min_t_exatos":
+            [],
+
+        "min_t_nums":
+            [],
+
+        "max_val_exato":
+            "",
+
+        "max_val_num":
+            None,
+
+        "max_t_exatos":
+            [],
+
+        "max_t_nums":
+            []
+    }
+
+
+    # ---------------------------------------------------------
+    # GRANDEZA CONSTANTE
+    # ---------------------------------------------------------
+
+    if sp.simplify(
+        derivada
+    ) == 0:
+
+        valor = sp.simplify(
+            expressao.subs(
+                t,
+                t_inicial_exato
+            )
+        )
+
+
+        resultado["tipo"] = (
+            "constante"
+        )
+
+        resultado[
+            "min_val_exato"
+        ] = str(
+            valor
+        )
+
+        resultado[
+            "min_val_num"
+        ] = numero_real(
+            valor
+        )
+
+        resultado[
+            "max_val_exato"
+        ] = str(
+            valor
+        )
+
+        resultado[
+            "max_val_num"
+        ] = numero_real(
+            valor
+        )
+
+
+        return resultado
+
+
+    # ---------------------------------------------------------
+    # PONTOS CRÍTICOS
+    # ---------------------------------------------------------
+
+    estacionarios = sp.solveset(
+        derivada,
+        t,
+        domain=dominio
+    )
+
+
+    candidatos = []
+
+
+    # As fronteiras sempre devem ser avaliadas.
+    adicionar_candidato(
+        candidatos,
+        t_inicial_exato
+    )
+
+    adicionar_candidato(
+        candidatos,
+        t_final_exato
+    )
+
+
+    # ---------------------------------------------------------
+    # DERIVADA SEM RAÍZES
+    # ---------------------------------------------------------
+
+    if estacionarios == sp.EmptySet:
+
+        pass
+
+
+    # ---------------------------------------------------------
+    # CONJUNTO FINITO DE PONTOS CRÍTICOS
+    # ---------------------------------------------------------
+
+    elif isinstance(
+        estacionarios,
+        sp.FiniteSet
+    ):
+
+        for ponto in estacionarios:
+
+            adicionar_candidato(
+                candidatos,
+                ponto
+            )
+
+
+    # ---------------------------------------------------------
+    # TODO O DOMÍNIO É ESTACIONÁRIO
+    # ---------------------------------------------------------
+
+    elif estacionarios == dominio:
+
+        valor = sp.simplify(
+            expressao.subs(
+                t,
+                t_inicial_exato
+            )
+        )
+
+
+        resultado["tipo"] = (
+            "constante"
+        )
+
+        resultado[
+            "min_val_exato"
+        ] = str(
+            valor
+        )
+
+        resultado[
+            "min_val_num"
+        ] = numero_real(
+            valor
+        )
+
+        resultado[
+            "max_val_exato"
+        ] = str(
+            valor
+        )
+
+        resultado[
+            "max_val_num"
+        ] = numero_real(
+            valor
+        )
+
+
+        return resultado
+
+
+    # ---------------------------------------------------------
+    # SOLUÇÃO SIMBÓLICA NÃO FINITA
+    # ---------------------------------------------------------
+
+    else:
+
+        resultado["tipo"] = (
+            "limitacao"
+        )
+
+        resultado[
+            "mensagem"
+        ] = (
+            "Não foi possível reduzir simbolicamente "
+            "os pontos críticos a um conjunto finito "
+            "de instantes."
+        )
+
+
+        return resultado
+
+
+    # ---------------------------------------------------------
+    # ORDENA OS CANDIDATOS POR TEMPO
+    # ---------------------------------------------------------
+
+    candidatos = sorted(
+        candidatos,
+        key=numero_real
+    )
+
+
+    valores = []
+
+
+    # ---------------------------------------------------------
+    # AVALIA A GRANDEZA EM TODOS OS CANDIDATOS
+    # ---------------------------------------------------------
+
+    for ponto in candidatos:
+
+        valor_exato = sp.simplify(
+            expressao.subs(
+                t,
+                ponto
+            )
+        )
+
+        valor_num = numero_real(
+            valor_exato
+        )
+
+
+        valores.append({
+
+            "t_exato":
+                ponto,
+
+            "t_num":
+                numero_real(
+                    ponto
+                ),
+
+            "valor_exato":
+                valor_exato,
+
+            "valor_num":
+                valor_num
+        })
+
+
+    # ---------------------------------------------------------
+    # VALORES MÍNIMO E MÁXIMO
+    # ---------------------------------------------------------
+
+    min_num = min(
+        item["valor_num"]
+        for item
+        in valores
+    )
+
+    max_num = max(
+        item["valor_num"]
+        for item
+        in valores
+    )
+
+
+    # Tolerância usada apenas para detectar empates numéricos.
+    tolerancia_min = (
+        1e-10
+        *
+        max(
+            1.0,
+            abs(min_num)
+        )
+    )
+
+    tolerancia_max = (
+        1e-10
+        *
+        max(
+            1.0,
+            abs(max_num)
+        )
+    )
+
+
+    min_itens = [
+
+        item
+
+        for item
+        in valores
+
+        if abs(
+            item["valor_num"]
+            -
+            min_num
+        )
+        <=
+        tolerancia_min
+    ]
+
+
+    max_itens = [
+
+        item
+
+        for item
+        in valores
+
+        if abs(
+            item["valor_num"]
+            -
+            max_num
+        )
+        <=
+        tolerancia_max
+    ]
+
+
+    # ---------------------------------------------------------
+    # RESULTADO DO MÍNIMO
+    # ---------------------------------------------------------
+
+    resultado[
+        "min_val_exato"
+    ] = str(
+        min_itens[0][
+            "valor_exato"
+        ]
+    )
+
+    resultado[
+        "min_val_num"
+    ] = min_num
+
+    resultado[
+        "min_t_exatos"
+    ] = [
+
+        str(
+            item["t_exato"]
+        )
+
+        for item
+        in min_itens
+    ]
+
+    resultado[
+        "min_t_nums"
+    ] = [
+
+        item["t_num"]
+
+        for item
+        in min_itens
+    ]
+
+
+    # ---------------------------------------------------------
+    # RESULTADO DO MÁXIMO
+    # ---------------------------------------------------------
+
+    resultado[
+        "max_val_exato"
+    ] = str(
+        max_itens[0][
+            "valor_exato"
+        ]
+    )
+
+    resultado[
+        "max_val_num"
+    ] = max_num
+
+    resultado[
+        "max_t_exatos"
+    ] = [
+
+        str(
+            item["t_exato"]
+        )
+
+        for item
+        in max_itens
+    ]
+
+    resultado[
+        "max_t_nums"
+    ] = [
+
+        item["t_num"]
+
+        for item
+        in max_itens
+    ]
+
+
+    return resultado
+
+
+# =============================================================
+# 11. MODO: MOSTRAR MODELO
 # =============================================================
 
 if acao == "modelo":
@@ -556,12 +979,15 @@ if acao == "modelo":
 
 
 # =============================================================
-# 8. MODO: AVALIAR ESTADO EM t0
+# 12. MODO: AVALIAR ESTADO
 # =============================================================
 
 elif acao == "avaliar":
 
-    tipo_operacao = "avaliacao"
+    tipo_operacao = (
+        "avaliacao"
+    )
+
 
     instante = sp.sympify(
         valor_extra_js
@@ -575,13 +1001,15 @@ elif acao == "avaliar":
         )
 
 
-    instante_num = float(
-        sp.N(instante)
+    instante_num = numero_real(
+        instante
     )
 
 
     instante_exato = str(
-        sp.simplify(instante)
+        sp.simplify(
+            instante
+        )
     )
 
     instante_numerico = (
@@ -589,14 +1017,14 @@ elif acao == "avaliar":
     )
 
 
-    # ---------------------------------------------------------
-    # O instante precisa pertencer ao domínio físico.
-    # ---------------------------------------------------------
-
     if (
-        instante_num < t_inicial
+        instante_num
+        <
+        t_inicial
         or
-        instante_num > t_final
+        instante_num
+        >
+        t_final
     ):
 
         avaliacao_valida = False
@@ -647,21 +1075,27 @@ elif acao == "avaliar":
         )
 
 
-        x_avaliado_numerico = float(
-            sp.N(x_t0)
+        x_avaliado_numerico = (
+            numero_real(
+                x_t0
+            )
         )
 
-        v_avaliado_numerico = float(
-            sp.N(v_t0)
+        v_avaliado_numerico = (
+            numero_real(
+                v_t0
+            )
         )
 
-        a_avaliado_numerico = float(
-            sp.N(a_t0)
+        a_avaliado_numerico = (
+            numero_real(
+                a_t0
+            )
         )
 
 
 # =============================================================
-# 9. EVENTO DE POSIÇÃO
+# 13. EVENTO DE POSIÇÃO
 # =============================================================
 
 elif acao == "posicao":
@@ -680,7 +1114,7 @@ elif acao == "posicao":
 
 
 # =============================================================
-# 10. EVENTO DE VELOCIDADE
+# 14. EVENTO DE VELOCIDADE
 # =============================================================
 
 elif acao == "velocidade":
@@ -699,7 +1133,7 @@ elif acao == "velocidade":
 
 
 # =============================================================
-# 11. EVENTO DE ACELERAÇÃO
+# 15. EVENTO DE ACELERAÇÃO
 # =============================================================
 
 elif acao == "aceleracao":
@@ -718,7 +1152,7 @@ elif acao == "aceleracao":
 
 
 # =============================================================
-# 12. QUANDO A PARTÍCULA PARA
+# 16. QUANDO A PARTÍCULA PARA
 # =============================================================
 
 elif acao == "parar":
@@ -734,6 +1168,60 @@ elif acao == "parar":
     alvo = sp.Integer(0)
 
 
+# =============================================================
+# 17. EXTREMOS DE POSIÇÃO
+# =============================================================
+
+elif acao == "extremos_posicao":
+
+    tipo_operacao = (
+        "extremos"
+    )
+
+    extremos_grandeza_nome = (
+        "posição x(t)"
+    )
+
+    extremos_unidade = "m"
+
+
+    # Para extremos de x(t),
+    # procuramos onde dx/dt = v(t) = 0.
+    dados_extremos = (
+        calcular_extremos_globais(
+            x,
+            v
+        )
+    )
+
+
+# =============================================================
+# 18. EXTREMOS DE VELOCIDADE
+# =============================================================
+
+elif acao == "extremos_velocidade":
+
+    tipo_operacao = (
+        "extremos"
+    )
+
+    extremos_grandeza_nome = (
+        "velocidade v(t)"
+    )
+
+    extremos_unidade = "m/s"
+
+
+    # Para extremos de v(t),
+    # procuramos onde dv/dt = a(t) = 0.
+    dados_extremos = (
+        calcular_extremos_globais(
+            v,
+            a
+        )
+    )
+
+
 else:
 
     raise ValueError(
@@ -742,7 +1230,7 @@ else:
 
 
 # =============================================================
-# 13. RESOLUÇÃO DO EVENTO
+# 19. RESOLUÇÃO DOS EVENTOS
 # =============================================================
 
 if tipo_operacao == "evento":
@@ -754,14 +1242,6 @@ if tipo_operacao == "evento":
         )
 
 
-        # Queremos resolver:
-        #
-        #     expressão(t) = alvo
-        #
-        # que equivale a:
-        #
-        #     expressão(t) - alvo = 0
-
     solucoes = sp.solveset(
         expressao_evento - alvo,
         t,
@@ -769,78 +1249,146 @@ if tipo_operacao == "evento":
     )
 
 
-    # ---------------------------------------------------------
-    # Nenhuma solução
-    # ---------------------------------------------------------
-
     if solucoes == sp.EmptySet:
 
-        tipo_evento = "nenhuma"
+        tipo_evento = (
+            "nenhuma"
+        )
 
-
-    # ---------------------------------------------------------
-    # Todo o domínio é solução
-    # ---------------------------------------------------------
 
     elif solucoes == dominio:
 
-        tipo_evento = "todo_dominio"
+        tipo_evento = (
+            "todo_dominio"
+        )
 
-
-    # ---------------------------------------------------------
-    # Instantes isolados
-    # ---------------------------------------------------------
 
     elif isinstance(
         solucoes,
         sp.FiniteSet
     ):
 
-        tipo_evento = "pontos"
+        tipo_evento = (
+            "pontos"
+        )
 
 
         solucoes_ordenadas = sorted(
-            list(solucoes),
-            key=lambda valor:
-                float(
-                    sp.N(valor)
-                )
+            list(
+                solucoes
+            ),
+            key=numero_real
         )
 
 
         solucoes_exatas = [
+
             str(
-                sp.simplify(valor)
+                sp.simplify(
+                    valor
+                )
             )
+
             for valor
             in solucoes_ordenadas
         ]
 
 
         solucoes_numericas = [
-            float(
-                sp.N(valor)
+
+            numero_real(
+                valor
             )
+
             for valor
             in solucoes_ordenadas
         ]
 
 
-    # ---------------------------------------------------------
-    # Solução simbólica mais complexa
-    # ---------------------------------------------------------
-
     else:
 
-        tipo_evento = "nao_reduzido"
+        tipo_evento = (
+            "nao_reduzido"
+        )
 
         solucoes_exatas = [
-            str(solucoes)
+            str(
+                solucoes
+            )
         ]
 
 
 # =============================================================
-# 14. OBJETO DEVOLVIDO AO JAVASCRIPT
+# 20. RESULTADOS DOS EXTREMOS
+# =============================================================
+
+if tipo_operacao == "extremos":
+
+    extremos_tipo = (
+        dados_extremos[
+            "tipo"
+        ]
+    )
+
+    extremos_mensagem = (
+        dados_extremos[
+            "mensagem"
+        ]
+    )
+
+
+    minimo_valor_exato = (
+        dados_extremos[
+            "min_val_exato"
+        ]
+    )
+
+    minimo_valor_numerico = (
+        dados_extremos[
+            "min_val_num"
+        ]
+    )
+
+    minimo_tempos_exatos = (
+        dados_extremos[
+            "min_t_exatos"
+        ]
+    )
+
+    minimo_tempos_numericos = (
+        dados_extremos[
+            "min_t_nums"
+        ]
+    )
+
+
+    maximo_valor_exato = (
+        dados_extremos[
+            "max_val_exato"
+        ]
+    )
+
+    maximo_valor_numerico = (
+        dados_extremos[
+            "max_val_num"
+        ]
+    )
+
+    maximo_tempos_exatos = (
+        dados_extremos[
+            "max_t_exatos"
+        ]
+    )
+
+    maximo_tempos_numericos = (
+        dados_extremos[
+            "max_t_nums"
+        ]
+    )
+
+
+# =============================================================
+# 21. RESULTADO ENVIADO AO JAVASCRIPT
 # =============================================================
 
 resultado_python = {
@@ -872,6 +1420,11 @@ resultado_python = {
     "tipo_operacao":
         tipo_operacao,
 
+
+    # ---------------------------------------------------------
+    # Eventos
+    # ---------------------------------------------------------
+
     "grandeza_nome":
         grandeza_nome,
 
@@ -881,7 +1434,9 @@ resultado_python = {
     "alvo":
         (
             str(
-                sp.simplify(alvo)
+                sp.simplify(
+                    alvo
+                )
             )
             if alvo is not None
             else ""
@@ -895,6 +1450,11 @@ resultado_python = {
 
     "solucoes_numericas":
         solucoes_numericas,
+
+
+    # ---------------------------------------------------------
+    # Avaliação
+    # ---------------------------------------------------------
 
     "instante_exato":
         instante_exato,
@@ -924,7 +1484,48 @@ resultado_python = {
         v_avaliado_numerico,
 
     "a_avaliado_numerico":
-        a_avaliado_numerico
+        a_avaliado_numerico,
+
+
+    # ---------------------------------------------------------
+    # Extremos
+    # ---------------------------------------------------------
+
+    "extremos_tipo":
+        extremos_tipo,
+
+    "extremos_mensagem":
+        extremos_mensagem,
+
+    "extremos_grandeza_nome":
+        extremos_grandeza_nome,
+
+    "extremos_unidade":
+        extremos_unidade,
+
+    "minimo_valor_exato":
+        minimo_valor_exato,
+
+    "minimo_valor_numerico":
+        minimo_valor_numerico,
+
+    "minimo_tempos_exatos":
+        minimo_tempos_exatos,
+
+    "minimo_tempos_numericos":
+        minimo_tempos_numericos,
+
+    "maximo_valor_exato":
+        maximo_valor_exato,
+
+    "maximo_valor_numerico":
+        maximo_valor_numerico,
+
+    "maximo_tempos_exatos":
+        maximo_tempos_exatos,
+
+    "maximo_tempos_numericos":
+        maximo_tempos_numericos
 }
 
 
@@ -934,7 +1535,7 @@ resultado_python
 
         /*
             ====================================================
-            CONVERSÃO PYTHON -> JAVASCRIPT
+            PYTHON -> JAVASCRIPT
             ====================================================
         */
         const dados =
@@ -946,7 +1547,7 @@ resultado_python
 
         /*
             ====================================================
-            BLOCO COMUM DO RESULTADO
+            BLOCO COMUM
             ====================================================
         */
         let html = `
@@ -976,7 +1577,7 @@ resultado_python
 
         /*
             ====================================================
-            RESULTADO DA AVALIAÇÃO EM t0
+            AVALIAÇÃO EM t0
             ====================================================
         */
         if (
@@ -1015,7 +1616,9 @@ resultado_python
 
                 html += `
                     <p>
-                        <strong>Estado da partícula:</strong>
+                        <strong>
+                            Estado da partícula:
+                        </strong>
                     </p>
 
                     <p>
@@ -1060,7 +1663,7 @@ resultado_python
 
         /*
             ====================================================
-            RESULTADO DOS EVENTOS
+            EVENTOS
             ====================================================
         */
         if (
@@ -1072,7 +1675,9 @@ resultado_python
                 <hr>
 
                 <p>
-                    <strong>Condição física:</strong>
+                    <strong>
+                        Condição física:
+                    </strong>
 
                     ${dados.grandeza_nome}
                     =
@@ -1082,9 +1687,6 @@ resultado_python
             `;
 
 
-            /*
-                Nenhuma solução.
-            */
             if (
                 dados.tipo_evento ===
                 "nenhuma"
@@ -1101,9 +1703,6 @@ resultado_python
             }
 
 
-            /*
-                Todo o domínio.
-            */
             else if (
                 dados.tipo_evento ===
                 "todo_dominio"
@@ -1133,9 +1732,6 @@ resultado_python
             }
 
 
-            /*
-                Instantes isolados.
-            */
             else if (
                 dados.tipo_evento ===
                 "pontos"
@@ -1148,48 +1744,14 @@ resultado_python
                         </strong>
                     </p>
 
-                    <ul>
-                `;
-
-
-                for (
-                    let i = 0;
-                    i <
-                    dados.solucoes_numericas.length;
-                    i++
-                ) {
-
-                    const exata =
-                        dados.solucoes_exatas[i];
-
-                    const numerica =
-                        Number(
-                            dados
-                                .solucoes_numericas[i]
-                        );
-
-
-                    html += `
-                        <li>
-                            t =
-                            ${numerica.toFixed(9)}
-                            s
-                            &nbsp;
-                            (${exata})
-                        </li>
-                    `;
-                }
-
-
-                html += `
-                    </ul>
+                    ${listaTempos(
+                        dados.solucoes_exatas,
+                        dados.solucoes_numericas
+                    )}
                 `;
             }
 
 
-            /*
-                Solução simbólica não reduzida.
-            */
             else {
 
                 html += `
@@ -1214,16 +1776,158 @@ resultado_python
 
         /*
             ====================================================
-            MOSTRAR RESULTADO NA PÁGINA
+            EXTREMOS GLOBAIS
             ====================================================
         */
+        if (
+            dados.tipo_operacao ===
+            "extremos"
+        ) {
+
+            html += `
+                <hr>
+
+                <p>
+                    <strong>Análise:</strong>
+
+                    extremos globais de
+                    ${dados.extremos_grandeza_nome}
+                    no domínio informado.
+                </p>
+            `;
+
+
+            /*
+                Caso em que o SymPy não conseguiu
+                reduzir os pontos críticos.
+            */
+            if (
+                dados.extremos_tipo ===
+                "limitacao"
+            ) {
+
+                html += `
+                    <p>
+                        ${dados.extremos_mensagem}
+                    </p>
+                `;
+            }
+
+
+            /*
+                Grandeza constante.
+            */
+            else if (
+                dados.extremos_tipo ===
+                "constante"
+            ) {
+
+                html += `
+                    <p>
+                        A grandeza é constante
+                        em todo o domínio.
+                    </p>
+
+                    <p>
+                        <strong>
+                            Mínimo global:
+                        </strong>
+
+                        ${formatarValor(
+                            dados.minimo_valor_exato,
+                            Number(
+                                dados.minimo_valor_numerico
+                            ),
+                            dados.extremos_unidade
+                        )}
+                    </p>
+
+                    <p>
+                        <strong>
+                            Máximo global:
+                        </strong>
+
+                        ${formatarValor(
+                            dados.maximo_valor_exato,
+                            Number(
+                                dados.maximo_valor_numerico
+                            ),
+                            dados.extremos_unidade
+                        )}
+                    </p>
+
+                    <p>
+                        Ambos ocorrem em todo
+                        o intervalo analisado.
+                    </p>
+                `;
+            }
+
+
+            /*
+                Extremos determinados normalmente.
+            */
+            else {
+
+                html += `
+                    <p>
+                        <strong>
+                            Mínimo global:
+                        </strong>
+
+                        ${formatarValor(
+                            dados.minimo_valor_exato,
+                            Number(
+                                dados.minimo_valor_numerico
+                            ),
+                            dados.extremos_unidade
+                        )}
+                    </p>
+
+                    <p>
+                        <strong>
+                            Ocorre em:
+                        </strong>
+                    </p>
+
+                    ${listaTempos(
+                        dados.minimo_tempos_exatos,
+                        dados.minimo_tempos_numericos
+                    )}
+
+                    <p>
+                        <strong>
+                            Máximo global:
+                        </strong>
+
+                        ${formatarValor(
+                            dados.maximo_valor_exato,
+                            Number(
+                                dados.maximo_valor_numerico
+                            ),
+                            dados.extremos_unidade
+                        )}
+                    </p>
+
+                    <p>
+                        <strong>
+                            Ocorre em:
+                        </strong>
+                    </p>
+
+                    ${listaTempos(
+                        dados.maximo_tempos_exatos,
+                        dados.maximo_tempos_numericos
+                    )}
+                `;
+            }
+        }
+
+
         resultado.innerHTML =
             html;
 
 
-        /*
-            Libera memória do objeto Python.
-        */
         resposta.destroy();
 
     }
@@ -1249,31 +1953,19 @@ resultado_python
 }
 
 
-/*
-    Mudança da opção do menu.
-*/
 seletorAcao.addEventListener(
     "change",
     atualizarCampoExtra
 );
 
 
-/*
-    Botão principal.
-*/
 botao.addEventListener(
     "click",
     calcularMovimento
 );
 
 
-/*
-    Configuração inicial da interface.
-*/
 atualizarCampoExtra();
 
 
-/*
-    Inicialização do motor.
-*/
 iniciarPython();
