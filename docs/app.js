@@ -18,7 +18,13 @@ const tBInicial = document.getElementById("t-b-inicial");
 const tBFinal = document.getElementById("t-b-final");
 const comparacaoTipo = document.getElementById("comparacao-tipo");
 
+const acoesResultado = document.getElementById("acoes-resultado");
+const botaoGraficos = document.getElementById("botao-graficos");
+const graficosContainer = document.getElementById("graficos-container");
+
 let pyodide = null;
+let ultimoModeloValido = null;
+let graficosVisiveis = false;
 
 
 /*
@@ -92,6 +98,59 @@ function atualizarCamposExtras() {
 }
 
 
+
+function destruirGraficosPlotly() {
+    if (typeof Plotly === "undefined") {
+        return;
+    }
+
+    for (const id of [
+        "grafico-posicao",
+        "grafico-velocidade",
+        "grafico-aceleracao"
+    ]) {
+        const elemento = document.getElementById(id);
+
+        if (elemento) {
+            Plotly.purge(elemento);
+        }
+    }
+}
+
+
+function ocultarGraficos() {
+    destruirGraficosPlotly();
+
+    graficosContainer.innerHTML = "";
+    graficosContainer.hidden = true;
+
+    graficosVisiveis = false;
+    botaoGraficos.textContent = "Gerar gráficos";
+}
+
+
+function invalidarVisualizacaoDoResultado() {
+    ocultarGraficos();
+
+    ultimoModeloValido = null;
+    acoesResultado.hidden = true;
+    botaoGraficos.disabled = true;
+}
+
+
+function registrarModeloValido(funcao, tInicial, tFinal) {
+    ultimoModeloValido = {
+        funcao,
+        tInicial,
+        tFinal
+    };
+
+    acoesResultado.hidden = false;
+    botaoGraficos.disabled = false;
+    botaoGraficos.textContent = "Gerar gráficos";
+}
+
+
 /*
     ============================================================
     3. VALIDAÇÕES E FORMATAÇÃO
@@ -111,6 +170,7 @@ function valorNumericoValido(texto) {
 
 
 function mostrarErro(mensagem) {
+    invalidarVisualizacaoDoResultado();
     resultado.innerHTML = `<p>${mensagem}</p>`;
 }
 
@@ -781,7 +841,49 @@ def analisar_sinal(expressao):
 
 
 # =============================================================
-# 7. OBJETO PADRÃO DE SAÍDA
+# 7. AMOSTRAGEM NUMÉRICA PARA GRÁFICOS
+# =============================================================
+
+def gerar_amostras(expressao, inicio, fim, quantidade=401):
+    funcao_numerica = sp.lambdify(
+        t,
+        expressao,
+        modules=["math"]
+    )
+
+    tempos = [
+        inicio + (fim - inicio) * i / (quantidade - 1)
+        for i in range(quantidade)
+    ]
+
+    valores = []
+
+    for instante in tempos:
+        try:
+            valor = funcao_numerica(instante)
+
+            if isinstance(valor, complex):
+                if abs(valor.imag) > 1e-12:
+                    valores.append(None)
+                    continue
+
+                valor = valor.real
+
+            valor = float(valor)
+
+            if not sp.Float(valor).is_finite:
+                valores.append(None)
+            else:
+                valores.append(valor)
+
+        except Exception:
+            valores.append(None)
+
+    return tempos, valores
+
+
+# =============================================================
+# 8. OBJETO PADRÃO DE SAÍDA
 # =============================================================
 
 resultado_dados = {
@@ -871,12 +973,18 @@ resultado_dados = {
     "comparacao_resultado_tipo": "nao_aplicavel",
     "comparacao_solucoes_exatas": [],
     "comparacao_solucoes_numericas": [],
-    "comparacao_solucoes_texto": ""
+    "comparacao_solucoes_texto": "",
+
+    "grafico_t": [],
+    "grafico_x": [],
+    "grafico_v": [],
+    "grafico_a": [],
+    "grafico_pontos": 0
 }
 
 
 # =============================================================
-# 8. MOSTRAR MODELO
+# 9. MOSTRAR MODELO
 # =============================================================
 
 if acao == "modelo":
@@ -884,7 +992,41 @@ if acao == "modelo":
 
 
 # =============================================================
-# 9. AVALIAR ESTADO
+# 10. GERAR GRÁFICOS
+# =============================================================
+
+elif acao == "graficos":
+    resultado_dados["tipo_operacao"] = "graficos"
+
+    tempos, valores_x = gerar_amostras(
+        x,
+        t_inicial,
+        t_final
+    )
+
+    _, valores_v = gerar_amostras(
+        v,
+        t_inicial,
+        t_final
+    )
+
+    _, valores_a = gerar_amostras(
+        a,
+        t_inicial,
+        t_final
+    )
+
+    resultado_dados.update({
+        "grafico_t": tempos,
+        "grafico_x": valores_x,
+        "grafico_v": valores_v,
+        "grafico_a": valores_a,
+        "grafico_pontos": len(tempos)
+    })
+
+
+# =============================================================
+# 11. AVALIAR ESTADO
 # =============================================================
 
 elif acao == "avaliar":
@@ -1499,11 +1641,117 @@ function renderizarComparacao(dados) {
 
 /*
     ============================================================
-    7. FUNÇÃO PRINCIPAL
+    7. GRÁFICOS RESPONSIVOS
+    ============================================================
+*/
+
+function desenharGrafico(id, tempos, valores, titulo, eixoY) {
+    const elemento = document.getElementById(id);
+
+    if (!elemento) {
+        return;
+    }
+
+    const dados = [{
+        x: tempos,
+        y: valores,
+        type: "scatter",
+        mode: "lines",
+        hovertemplate: "t = %{x:.6g} s<br>" + eixoY + " = %{y:.6g}<extra></extra>"
+    }];
+
+    const layout = {
+        title: {
+            text: titulo,
+            x: 0.03,
+            xanchor: "left"
+        },
+        autosize: true,
+        margin: {
+            l: 64,
+            r: 24,
+            t: 64,
+            b: 58
+        },
+        xaxis: {
+            title: "Tempo t (s)",
+            zeroline: true,
+            automargin: true
+        },
+        yaxis: {
+            title: eixoY,
+            zeroline: true,
+            automargin: true
+        },
+        hovermode: "closest"
+    };
+
+    const config = {
+        responsive: true,
+        displaylogo: false,
+        scrollZoom: false,
+        modeBarButtonsToRemove: [
+            "lasso2d",
+            "select2d"
+        ]
+    };
+
+    Plotly.newPlot(
+        elemento,
+        dados,
+        layout,
+        config
+    );
+}
+
+
+function desenharGraficosDoMovimento(dados) {
+    if (typeof Plotly === "undefined") {
+        const aviso = document.getElementById("graficos-aviso");
+
+        if (aviso) {
+            aviso.textContent =
+                "A biblioteca de gráficos não foi carregada. Verifique a conexão com a internet.";
+        }
+
+        return;
+    }
+
+    desenharGrafico(
+        "grafico-posicao",
+        dados.grafico_t,
+        dados.grafico_x,
+        "Posição x(t)",
+        "Posição x (m)"
+    );
+
+    desenharGrafico(
+        "grafico-velocidade",
+        dados.grafico_t,
+        dados.grafico_v,
+        "Velocidade v(t)",
+        "Velocidade v (m/s)"
+    );
+
+    desenharGrafico(
+        "grafico-aceleracao",
+        dados.grafico_t,
+        dados.grafico_a,
+        "Aceleração a(t)",
+        "Aceleração a (m/s²)"
+    );
+}
+
+
+/*
+    ============================================================
+    8. FUNÇÃO PRINCIPAL
     ============================================================
 */
 
 async function calcularMovimento() {
+    invalidarVisualizacaoDoResultado();
+
     const funcao = document.getElementById("funcao").value.trim();
 
     const tInicial = Number(
@@ -2163,10 +2411,18 @@ async function calcularMovimento() {
         }
 
         resultado.innerHTML = html;
+
+        registrarModeloValido(
+            funcao,
+            tInicial,
+            tFinal
+        );
+
         resposta.destroy();
 
     } catch (erro) {
         console.error(erro);
+        invalidarVisualizacaoDoResultado();
 
         resultado.innerHTML = `
             <p>
@@ -2183,6 +2439,129 @@ async function calcularMovimento() {
 }
 
 
+
+async function gerarGraficosDoUltimoResultado() {
+    if (!ultimoModeloValido) {
+        return;
+    }
+
+    if (graficosVisiveis) {
+        ocultarGraficos();
+        return;
+    }
+
+    if (typeof Plotly === "undefined") {
+        graficosContainer.hidden = false;
+        graficosContainer.innerHTML = `
+            <p>
+                A biblioteca de gráficos não foi carregada.
+                Verifique a conexão com a internet.
+            </p>
+        `;
+        return;
+    }
+
+    botaoGraficos.disabled = true;
+    botaoGraficos.textContent = "Gerando gráficos...";
+
+    pyodide.globals.set(
+        "funcao_js",
+        ultimoModeloValido.funcao
+    );
+
+    pyodide.globals.set(
+        "t_inicial_js",
+        ultimoModeloValido.tInicial
+    );
+
+    pyodide.globals.set(
+        "t_final_js",
+        ultimoModeloValido.tFinal
+    );
+
+    pyodide.globals.set(
+        "acao_js",
+        "graficos"
+    );
+
+    try {
+        const respostaGrafico =
+            await pyodide.runPythonAsync(
+                PYTHON_ENGINE
+            );
+
+        const dadosGrafico =
+            respostaGrafico.toJs({
+                dict_converter:
+                    Object.fromEntries
+            });
+
+        graficosContainer.innerHTML = `
+            <hr>
+
+            <section class="graficos-movimento">
+                <h4>GRÁFICOS DO MOVIMENTO</h4>
+
+                <p>
+                    Foram gerados
+                    ${dadosGrafico.grafico_pontos}
+                    pontos no domínio físico do último cálculo válido.
+                </p>
+
+                <p id="graficos-aviso"></p>
+
+                <div class="grafico-card">
+                    <div id="grafico-posicao" class="grafico"></div>
+                </div>
+
+                <div class="grafico-card">
+                    <div id="grafico-velocidade" class="grafico"></div>
+                </div>
+
+                <div class="grafico-card">
+                    <div id="grafico-aceleracao" class="grafico"></div>
+                </div>
+            </section>
+        `;
+
+        graficosContainer.hidden = false;
+
+        desenharGraficosDoMovimento(
+            dadosGrafico
+        );
+
+        graficosVisiveis = true;
+        botaoGraficos.textContent = "Ocultar gráficos";
+
+        respostaGrafico.destroy();
+
+    } catch (erro) {
+        console.error(erro);
+
+        destruirGraficosPlotly();
+
+        graficosContainer.hidden = false;
+        graficosContainer.innerHTML = `
+            <p>
+                Não foi possível gerar os gráficos
+                do último resultado calculado.
+            </p>
+        `;
+
+        graficosVisiveis = false;
+        botaoGraficos.textContent = "Gerar gráficos";
+
+    } finally {
+        botaoGraficos.disabled = false;
+    }
+}
+
+
+function invalidarAoEditar() {
+    invalidarVisualizacaoDoResultado();
+}
+
+
 /*
     ============================================================
     8. EVENTOS DA INTERFACE
@@ -2191,13 +2570,45 @@ async function calcularMovimento() {
 
 seletorAcao.addEventListener(
     "change",
-    atualizarCamposExtras
+    () => {
+        atualizarCamposExtras();
+        invalidarAoEditar();
+    }
 );
 
 botao.addEventListener(
     "click",
     calcularMovimento
 );
+
+botaoGraficos.addEventListener(
+    "click",
+    gerarGraficosDoUltimoResultado
+);
+
+for (const campo of [
+    document.getElementById("funcao"),
+    document.getElementById("t-inicial"),
+    document.getElementById("t-final"),
+    entradaExtra,
+    intervaloT1,
+    intervaloT2,
+    funcaoB,
+    tBInicial,
+    tBFinal
+]) {
+    campo.addEventListener(
+        "input",
+        invalidarAoEditar
+    );
+}
+
+comparacaoTipo.addEventListener(
+    "change",
+    invalidarAoEditar
+);
+
+botaoGraficos.disabled = true;
 
 atualizarCamposExtras();
 iniciarPython();

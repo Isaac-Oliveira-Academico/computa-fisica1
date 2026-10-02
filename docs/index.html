@@ -6,6 +6,7 @@
     <title>COMPUTA — Física 1</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 </head>
 <body>
     <main>
@@ -106,7 +107,16 @@
         <section>
             <h3>Resultado</h3>
             <div id="status">Inicializando motor Python...</div>
+
+            <div id="acoes-resultado" class="acoes-resultado" hidden>
+                <button id="botao-graficos" type="button">
+                    Gerar gráficos
+                </button>
+            </div>
+
             <div id="resultado"></div>
+
+            <div id="graficos-container" hidden></div>
         </section>
     </main>
 

@@ -1,0 +1,148 @@
+* {
+    box-sizing: border-box;
+}
+
+html {
+    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    margin: 0;
+    background: #f7f7f8;
+    color: #171717;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+main {
+    width: min(100% - 2rem, 980px);
+    margin: 0 auto;
+    padding: 1.5rem 0 3rem;
+}
+
+h1,
+h2,
+h3,
+h4 {
+    line-height: 1.2;
+}
+
+section {
+    margin: 1.25rem 0;
+}
+
+main > section {
+    padding: 1.25rem;
+    background: #ffffff;
+    border: 1px solid #dedede;
+    border-radius: 12px;
+}
+
+label {
+    display: inline-block;
+    margin: 0.35rem 0;
+    font-weight: 600;
+}
+
+input,
+select,
+button {
+    max-width: 100%;
+    font: inherit;
+}
+
+input,
+select {
+    min-height: 2.6rem;
+    padding: 0.45rem 0.65rem;
+    border: 1px solid #a8a8a8;
+    border-radius: 6px;
+}
+
+input[type="text"],
+input[type="number"] {
+    width: min(100%, 390px);
+}
+
+select {
+    width: min(100%, 520px);
+}
+
+button {
+    min-height: 2.7rem;
+    padding: 0.55rem 1rem;
+    border: 1px solid #888888;
+    border-radius: 7px;
+    cursor: pointer;
+}
+
+button:disabled {
+    cursor: wait;
+    opacity: 0.65;
+}
+
+
+.acoes-resultado {
+    margin: 1rem 0 0.75rem;
+}
+
+#botao-graficos {
+    font-weight: 700;
+}
+
+#graficos-container {
+    margin-top: 1rem;
+}
+
+#resultado {
+    overflow-wrap: anywhere;
+}
+
+#resultado p,
+#resultado li {
+    line-height: 1.55;
+}
+
+.graficos-movimento {
+    width: 100%;
+}
+
+.grafico-card {
+    width: 100%;
+    margin: 1.25rem 0;
+    overflow: hidden;
+    background: #ffffff;
+    border: 1px solid #dedede;
+    border-radius: 10px;
+}
+
+.grafico {
+    width: 100%;
+    min-height: 380px;
+}
+
+@media (max-width: 680px) {
+    main {
+        width: min(100% - 1rem, 980px);
+        padding-top: 0.75rem;
+    }
+
+    main > section {
+        padding: 0.9rem;
+        border-radius: 8px;
+    }
+
+    label {
+        display: block;
+        margin-top: 0.75rem;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select {
+        width: 100%;
+    }
+
+    .grafico {
+        min-height: 310px;
+    }
+}
