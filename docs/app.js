@@ -84,17 +84,6 @@ async function iniciarPython() {
     ============================================================
     INTERFACE
     ============================================================
-
-    Há agora três tipos de operações:
-
-    1. Sem entrada extra:
-       modelo, parar, extremos.
-
-    2. Uma entrada:
-       avaliar, posição, velocidade, aceleração.
-
-    3. Duas entradas:
-       análise em intervalo t1 -> t2.
 */
 
 function atualizarCamposExtras() {
@@ -170,12 +159,13 @@ function atualizarCamposExtras() {
     }
 
 
-    if (acao === "medias_intervalo") {
+    if (
+        acao === "medias_intervalo" ||
+        acao === "distancia_escalar"
+    ) {
 
         intervaloContainer.hidden =
             false;
-
-        return;
     }
 }
 
@@ -348,12 +338,6 @@ async function calcularMovimento() {
         intervaloT2.value.trim();
 
 
-    /*
-        --------------------------------------------------------
-        FUNÇÃO x(t)
-        --------------------------------------------------------
-    */
-
     if (!funcaoValida(funcao)) {
 
         resultado.innerHTML = `
@@ -371,12 +355,6 @@ async function calcularMovimento() {
         return;
     }
 
-
-    /*
-        --------------------------------------------------------
-        DOMÍNIO FÍSICO
-        --------------------------------------------------------
-    */
 
     if (
         !Number.isFinite(tInicial) ||
@@ -407,12 +385,6 @@ async function calcularMovimento() {
     }
 
 
-    /*
-        --------------------------------------------------------
-        UMA ENTRADA EXTRA
-        --------------------------------------------------------
-    */
-
     const precisaValorExtra =
         acao === "avaliar" ||
         acao === "posicao" ||
@@ -442,14 +414,9 @@ async function calcularMovimento() {
     }
 
 
-    /*
-        --------------------------------------------------------
-        INTERVALO t1 -> t2
-        --------------------------------------------------------
-    */
-
     const precisaIntervalo =
-        acao === "medias_intervalo";
+        acao === "medias_intervalo" ||
+        acao === "distancia_escalar";
 
 
     if (
@@ -480,12 +447,6 @@ async function calcularMovimento() {
         return;
     }
 
-
-    /*
-        --------------------------------------------------------
-        JAVASCRIPT -> PYTHON
-        --------------------------------------------------------
-    */
 
     pyodide.globals.set(
         "funcao_js",
@@ -538,7 +499,7 @@ import sympy as sp
 
 
 # =============================================================
-# 1. VARIÁVEL SIMBÓLICA
+# 1. MODELO CINEMÁTICO
 # =============================================================
 
 t = sp.symbols(
@@ -546,10 +507,6 @@ t = sp.symbols(
     real=True
 )
 
-
-# =============================================================
-# 2. FUNÇÃO POSIÇÃO
-# =============================================================
 
 x = sp.sympify(
     funcao_js,
@@ -566,10 +523,6 @@ if not x.free_symbols.issubset({t}):
     )
 
 
-# =============================================================
-# 3. VELOCIDADE E ACELERAÇÃO
-# =============================================================
-
 v = sp.diff(
     x,
     t
@@ -582,7 +535,7 @@ a = sp.diff(
 
 
 # =============================================================
-# 4. DOMÍNIO FÍSICO
+# 2. DOMÍNIO FÍSICO
 # =============================================================
 
 t_inicial_exato = sp.Rational(
@@ -593,6 +546,7 @@ t_final_exato = sp.Rational(
     str(t_final_js)
 )
 
+
 t_inicial = float(
     t_inicial_exato
 )
@@ -601,15 +555,12 @@ t_final = float(
     t_final_exato
 )
 
+
 dominio = sp.Interval(
     t_inicial_exato,
     t_final_exato
 )
 
-
-# =============================================================
-# 5. AÇÃO
-# =============================================================
 
 acao = str(
     acao_js
@@ -617,134 +568,7 @@ acao = str(
 
 
 # =============================================================
-# 6. VARIÁVEIS GERAIS
-# =============================================================
-
-tipo_operacao = ""
-
-grandeza_nome = ""
-
-unidade = ""
-
-alvo = None
-
-
-# =============================================================
-# 7. EVENTOS
-# =============================================================
-
-tipo_evento = "nao_aplicavel"
-
-solucoes_exatas = []
-
-solucoes_numericas = []
-
-
-# =============================================================
-# 8. AVALIAÇÃO EM t0
-# =============================================================
-
-instante_exato = ""
-
-instante_numerico = None
-
-avaliacao_valida = False
-
-avaliacao_mensagem = ""
-
-x_avaliado_exato = ""
-
-v_avaliado_exato = ""
-
-a_avaliado_exato = ""
-
-x_avaliado_numerico = None
-
-v_avaliado_numerico = None
-
-a_avaliado_numerico = None
-
-
-# =============================================================
-# 9. EXTREMOS
-# =============================================================
-
-extremos_tipo = "nao_aplicavel"
-
-extremos_mensagem = ""
-
-extremos_grandeza_nome = ""
-
-extremos_unidade = ""
-
-minimo_valor_exato = ""
-
-minimo_valor_numerico = None
-
-minimo_tempos_exatos = []
-
-minimo_tempos_numericos = []
-
-maximo_valor_exato = ""
-
-maximo_valor_numerico = None
-
-maximo_tempos_exatos = []
-
-maximo_tempos_numericos = []
-
-
-# =============================================================
-# 10. MÉDIAS EM INTERVALO
-# =============================================================
-
-medias_valida = False
-
-medias_mensagem = ""
-
-media_t1_exato = ""
-
-media_t2_exato = ""
-
-media_t1_numerico = None
-
-media_t2_numerico = None
-
-delta_t_exato = ""
-
-delta_t_numerico = None
-
-x_t1_exato = ""
-
-x_t2_exato = ""
-
-x_t1_numerico = None
-
-x_t2_numerico = None
-
-v_t1_exato = ""
-
-v_t2_exato = ""
-
-v_t1_numerico = None
-
-v_t2_numerico = None
-
-deslocamento_exato = ""
-
-deslocamento_numerico = None
-
-velocidade_media_exato = ""
-
-velocidade_media_numerico = None
-
-aceleracao_media_exato = ""
-
-aceleracao_media_numerico = None
-
-
-# =============================================================
-# 11. FUNÇÕES AUXILIARES
+# 3. FUNÇÕES AUXILIARES
 # =============================================================
 
 def numero_real(expr):
@@ -775,6 +599,60 @@ def adicionar_candidato(
         candidato
     )
 
+
+def validar_intervalo(
+    t1,
+    t2
+):
+
+    t1_num = numero_real(
+        t1
+    )
+
+    t2_num = numero_real(
+        t2
+    )
+
+
+    if (
+        t1_num < t_inicial
+        or
+        t1_num > t_final
+        or
+        t2_num < t_inicial
+        or
+        t2_num > t_final
+    ):
+
+        return (
+            False,
+            (
+                "O intervalo informado ultrapassa "
+                "o domínio físico do movimento."
+            )
+        )
+
+
+    if t2_num <= t1_num:
+
+        return (
+            False,
+            (
+                "O instante t₂ deve ser maior "
+                "que o instante t₁."
+            )
+        )
+
+
+    return (
+        True,
+        ""
+    )
+
+
+# =============================================================
+# 4. EXTREMOS GLOBAIS
+# =============================================================
 
 def calcular_extremos_globais(
     expressao,
@@ -814,10 +692,6 @@ def calcular_extremos_globais(
             []
     }
 
-
-    # ---------------------------------------------------------
-    # GRANDEZA CONSTANTE
-    # ---------------------------------------------------------
 
     if sp.simplify(
         derivada
@@ -862,10 +736,6 @@ def calcular_extremos_globais(
 
         return resultado
 
-
-    # ---------------------------------------------------------
-    # PONTOS CRÍTICOS
-    # ---------------------------------------------------------
 
     estacionarios = sp.solveset(
         derivada,
@@ -984,6 +854,7 @@ def calcular_extremos_globais(
             )
         )
 
+
         valor_num = numero_real(
             valor_exato
         )
@@ -1008,13 +879,17 @@ def calcular_extremos_globais(
 
 
     min_num = min(
-        item["valor_num"]
+        item[
+            "valor_num"
+        ]
         for item
         in valores
     )
 
     max_num = max(
-        item["valor_num"]
+        item[
+            "valor_num"
+        ]
         for item
         in valores
     )
@@ -1025,7 +900,9 @@ def calcular_extremos_globais(
         *
         max(
             1.0,
-            abs(min_num)
+            abs(
+                min_num
+            )
         )
     )
 
@@ -1034,7 +911,9 @@ def calcular_extremos_globais(
         *
         max(
             1.0,
-            abs(max_num)
+            abs(
+                max_num
+            )
         )
     )
 
@@ -1090,7 +969,9 @@ def calcular_extremos_globais(
     ] = [
 
         str(
-            item["t_exato"]
+            item[
+                "t_exato"
+            ]
         )
 
         for item
@@ -1101,7 +982,9 @@ def calcular_extremos_globais(
         "min_t_nums"
     ] = [
 
-        item["t_num"]
+        item[
+            "t_num"
+        ]
 
         for item
         in min_itens
@@ -1125,7 +1008,9 @@ def calcular_extremos_globais(
     ] = [
 
         str(
-            item["t_exato"]
+            item[
+                "t_exato"
+            ]
         )
 
         for item
@@ -1136,7 +1021,9 @@ def calcular_extremos_globais(
         "max_t_nums"
     ] = [
 
-        item["t_num"]
+        item[
+            "t_num"
+        ]
 
         for item
         in max_itens
@@ -1147,676 +1034,261 @@ def calcular_extremos_globais(
 
 
 # =============================================================
-# 12. MOSTRAR MODELO
+# 5. DISTÂNCIA TOTAL
 # =============================================================
 
-if acao == "modelo":
-
-    tipo_operacao = "modelo"
-
-
-# =============================================================
-# 13. AVALIAR ESTADO EM t0
-# =============================================================
-
-elif acao == "avaliar":
-
-    tipo_operacao = "avaliacao"
-
-
-    instante = sp.sympify(
-        valor_extra_js
-    )
-
-
-    if instante.free_symbols:
-
-        raise ValueError(
-            "O instante não pode conter variáveis."
-        )
-
-
-    instante_num = numero_real(
-        instante
-    )
-
-
-    instante_exato = str(
-        sp.simplify(
-            instante
-        )
-    )
-
-    instante_numerico = (
-        instante_num
-    )
-
-
-    if (
-        instante_num < t_inicial
-        or
-        instante_num > t_final
-    ):
-
-        avaliacao_valida = False
-
-        avaliacao_mensagem = (
-            "O instante informado está fora "
-            "do domínio físico."
-        )
-
-
-    else:
-
-        avaliacao_valida = True
-
-
-        x_t0 = sp.simplify(
-            x.subs(
-                t,
-                instante
-            )
-        )
-
-        v_t0 = sp.simplify(
-            v.subs(
-                t,
-                instante
-            )
-        )
-
-        a_t0 = sp.simplify(
-            a.subs(
-                t,
-                instante
-            )
-        )
-
-
-        x_avaliado_exato = str(
-            x_t0
-        )
-
-        v_avaliado_exato = str(
-            v_t0
-        )
-
-        a_avaliado_exato = str(
-            a_t0
-        )
-
-
-        x_avaliado_numerico = (
-            numero_real(
-                x_t0
-            )
-        )
-
-        v_avaliado_numerico = (
-            numero_real(
-                v_t0
-            )
-        )
-
-        a_avaliado_numerico = (
-            numero_real(
-                a_t0
-            )
-        )
-
-
-# =============================================================
-# 14. EVENTO DE POSIÇÃO
-# =============================================================
-
-elif acao == "posicao":
-
-    tipo_operacao = "evento"
-
-    expressao_evento = x
-
-    grandeza_nome = "x(t)"
-
-    unidade = "m"
-
-    alvo = sp.sympify(
-        valor_extra_js
-    )
-
-
-# =============================================================
-# 15. EVENTO DE VELOCIDADE
-# =============================================================
-
-elif acao == "velocidade":
-
-    tipo_operacao = "evento"
-
-    expressao_evento = v
-
-    grandeza_nome = "v(t)"
-
-    unidade = "m/s"
-
-    alvo = sp.sympify(
-        valor_extra_js
-    )
-
-
-# =============================================================
-# 16. EVENTO DE ACELERAÇÃO
-# =============================================================
-
-elif acao == "aceleracao":
-
-    tipo_operacao = "evento"
-
-    expressao_evento = a
-
-    grandeza_nome = "a(t)"
-
-    unidade = "m/s²"
-
-    alvo = sp.sympify(
-        valor_extra_js
-    )
-
-
-# =============================================================
-# 17. PARTÍCULA PARA
-# =============================================================
-
-elif acao == "parar":
-
-    tipo_operacao = "evento"
-
-    expressao_evento = v
-
-    grandeza_nome = "v(t)"
-
-    unidade = "m/s"
-
-    alvo = sp.Integer(0)
-
-
-# =============================================================
-# 18. EXTREMOS DE POSIÇÃO
-# =============================================================
-
-elif acao == "extremos_posicao":
-
-    tipo_operacao = "extremos"
-
-    extremos_grandeza_nome = (
-        "posição x(t)"
-    )
-
-    extremos_unidade = "m"
-
-
-    dados_extremos = (
-        calcular_extremos_globais(
-            x,
-            v
-        )
-    )
-
-
-# =============================================================
-# 19. EXTREMOS DE VELOCIDADE
-# =============================================================
-
-elif acao == "extremos_velocidade":
-
-    tipo_operacao = "extremos"
-
-    extremos_grandeza_nome = (
-        "velocidade v(t)"
-    )
-
-    extremos_unidade = "m/s"
-
-
-    dados_extremos = (
-        calcular_extremos_globais(
-            v,
-            a
-        )
-    )
-
-
-# =============================================================
-# 20. DESLOCAMENTO E MÉDIAS EM INTERVALO
-# =============================================================
-
-elif acao == "medias_intervalo":
-
-    tipo_operacao = "medias"
-
-
-    t1 = sp.sympify(
-        intervalo_t1_js
-    )
-
-    t2 = sp.sympify(
-        intervalo_t2_js
-    )
-
-
-    if (
-        t1.free_symbols
-        or
-        t2.free_symbols
-    ):
-
-        raise ValueError(
-            "Os instantes do intervalo "
-            "não podem conter variáveis."
-        )
-
-
-    t1_num = numero_real(
-        t1
-    )
-
-    t2_num = numero_real(
+def calcular_distancia_total(
+    t1,
+    t2
+):
+
+    intervalo = sp.Interval(
+        t1,
         t2
     )
 
 
-    media_t1_exato = str(
-        sp.simplify(
-            t1
-        )
-    )
-
-    media_t2_exato = str(
-        sp.simplify(
-            t2
-        )
-    )
-
-    media_t1_numerico = (
-        t1_num
-    )
-
-    media_t2_numerico = (
-        t2_num
+    zeros_v = sp.solveset(
+        v,
+        t,
+        domain=intervalo
     )
 
 
     # ---------------------------------------------------------
-    # VERIFICAÇÃO DO DOMÍNIO
+    # REPOUSO DURANTE TODO O INTERVALO
     # ---------------------------------------------------------
 
     if (
-        t1_num < t_inicial
+        sp.simplify(
+            v
+        ) == 0
         or
-        t1_num > t_final
-        or
-        t2_num < t_inicial
-        or
-        t2_num > t_final
+        zeros_v == intervalo
     ):
 
-        medias_valida = False
+        return {
 
-        medias_mensagem = (
-            "O intervalo informado ultrapassa "
-            "o domínio físico do movimento."
-        )
+            "tipo":
+                "ok",
 
+            "mensagem":
+                "",
 
-    # ---------------------------------------------------------
-    # ORDEM DOS INSTANTES
-    # ---------------------------------------------------------
+            "pontos_exatos":
+                [
+                    str(
+                        sp.simplify(
+                            t1
+                        )
+                    ),
+                    str(
+                        sp.simplify(
+                            t2
+                        )
+                    )
+                ],
 
-    elif t2_num <= t1_num:
+            "pontos_numericos":
+                [
+                    numero_real(
+                        t1
+                    ),
+                    numero_real(
+                        t2
+                    )
+                ],
 
-        medias_valida = False
+            "distancia_exata":
+                "0",
 
-        medias_mensagem = (
-            "O instante t₂ deve ser maior "
-            "que o instante t₁."
-        )
-
-
-    else:
-
-        medias_valida = True
-
-
-        # -----------------------------------------------------
-        # ESTADO NAS EXTREMIDADES
-        # -----------------------------------------------------
-
-        x1 = sp.simplify(
-            x.subs(
-                t,
-                t1
-            )
-        )
-
-        x2 = sp.simplify(
-            x.subs(
-                t,
-                t2
-            )
-        )
-
-        v1 = sp.simplify(
-            v.subs(
-                t,
-                t1
-            )
-        )
-
-        v2 = sp.simplify(
-            v.subs(
-                t,
-                t2
-            )
-        )
+            "distancia_numerica":
+                0.0
+        }
 
 
-        # -----------------------------------------------------
-        # INTERVALO DE TEMPO
-        # -----------------------------------------------------
-
-        delta_t = sp.simplify(
-            t2 - t1
-        )
+    pontos = []
 
 
-        # -----------------------------------------------------
-        # DESLOCAMENTO
-        # -----------------------------------------------------
+    adicionar_candidato(
+        pontos,
+        t1
+    )
 
-        deslocamento = sp.simplify(
-            x2 - x1
-        )
-
-
-        # -----------------------------------------------------
-        # VELOCIDADE MÉDIA
-        # -----------------------------------------------------
-
-        velocidade_media = sp.simplify(
-            deslocamento
-            /
-            delta_t
-        )
-
-
-        # -----------------------------------------------------
-        # ACELERAÇÃO MÉDIA
-        # -----------------------------------------------------
-
-        aceleracao_media = sp.simplify(
-            (
-                v2 - v1
-            )
-            /
-            delta_t
-        )
-
-
-        # -----------------------------------------------------
-        # RESULTADOS EXATOS
-        # -----------------------------------------------------
-
-        delta_t_exato = str(
-            delta_t
-        )
-
-        x_t1_exato = str(
-            x1
-        )
-
-        x_t2_exato = str(
-            x2
-        )
-
-        v_t1_exato = str(
-            v1
-        )
-
-        v_t2_exato = str(
-            v2
-        )
-
-        deslocamento_exato = str(
-            deslocamento
-        )
-
-        velocidade_media_exato = str(
-            velocidade_media
-        )
-
-        aceleracao_media_exato = str(
-            aceleracao_media
-        )
-
-
-        # -----------------------------------------------------
-        # RESULTADOS NUMÉRICOS
-        # -----------------------------------------------------
-
-        delta_t_numerico = (
-            numero_real(
-                delta_t
-            )
-        )
-
-        x_t1_numerico = (
-            numero_real(
-                x1
-            )
-        )
-
-        x_t2_numerico = (
-            numero_real(
-                x2
-            )
-        )
-
-        v_t1_numerico = (
-            numero_real(
-                v1
-            )
-        )
-
-        v_t2_numerico = (
-            numero_real(
-                v2
-            )
-        )
-
-        deslocamento_numerico = (
-            numero_real(
-                deslocamento
-            )
-        )
-
-        velocidade_media_numerico = (
-            numero_real(
-                velocidade_media
-            )
-        )
-
-        aceleracao_media_numerico = (
-            numero_real(
-                aceleracao_media
-            )
-        )
-
-
-else:
-
-    raise ValueError(
-        "Ação desconhecida."
+    adicionar_candidato(
+        pontos,
+        t2
     )
 
 
-# =============================================================
-# 21. RESOLUÇÃO DOS EVENTOS
-# =============================================================
+    # ---------------------------------------------------------
+    # SEM PONTOS DE VELOCIDADE ZERO
+    # ---------------------------------------------------------
 
-if tipo_operacao == "evento":
+    if zeros_v == sp.EmptySet:
 
-    if alvo.free_symbols:
-
-        raise ValueError(
-            "O valor-alvo não pode conter variáveis."
-        )
+        pass
 
 
-    solucoes = sp.solveset(
-        expressao_evento - alvo,
-        t,
-        domain=dominio
-    )
-
-
-    if solucoes == sp.EmptySet:
-
-        tipo_evento = "nenhuma"
-
-
-    elif solucoes == dominio:
-
-        tipo_evento = (
-            "todo_dominio"
-        )
-
+    # ---------------------------------------------------------
+    # CONJUNTO FINITO DE PONTOS DE VELOCIDADE ZERO
+    # ---------------------------------------------------------
 
     elif isinstance(
-        solucoes,
+        zeros_v,
         sp.FiniteSet
     ):
 
-        tipo_evento = "pontos"
+        for raiz in zeros_v:
+
+            raiz_num = numero_real(
+                raiz
+            )
 
 
-        solucoes_ordenadas = sorted(
-            list(
-                solucoes
-            ),
-            key=numero_real
-        )
-
-
-        solucoes_exatas = [
-
-            str(
-                sp.simplify(
-                    valor
+            if (
+                numero_real(
+                    t1
                 )
-            )
+                <
+                raiz_num
+                <
+                numero_real(
+                    t2
+                )
+            ):
 
-            for valor
-            in solucoes_ordenadas
-        ]
+                adicionar_candidato(
+                    pontos,
+                    raiz
+                )
 
 
-        solucoes_numericas = [
-
-            numero_real(
-                valor
-            )
-
-            for valor
-            in solucoes_ordenadas
-        ]
-
+    # ---------------------------------------------------------
+    # LIMITAÇÃO SIMBÓLICA
+    # ---------------------------------------------------------
 
     else:
 
-        tipo_evento = (
-            "nao_reduzido"
+        return {
+
+            "tipo":
+                "limitacao",
+
+            "mensagem":
+                (
+                    "Não foi possível reduzir simbolicamente "
+                    "os instantes de mudança de sentido a "
+                    "um conjunto finito de pontos."
+                ),
+
+            "pontos_exatos":
+                [],
+
+            "pontos_numericos":
+                [],
+
+            "distancia_exata":
+                "",
+
+            "distancia_numerica":
+                None
+        }
+
+
+    pontos = sorted(
+        pontos,
+        key=numero_real
+    )
+
+
+    distancia = sp.Integer(
+        0
+    )
+
+
+    for i in range(
+        len(
+            pontos
+        )
+        -
+        1
+    ):
+
+        xa = sp.simplify(
+            x.subs(
+                t,
+                pontos[i]
+            )
         )
 
-        solucoes_exatas = [
-            str(
-                solucoes
+        xb = sp.simplify(
+            x.subs(
+                t,
+                pontos[
+                    i + 1
+                ]
             )
-        ]
+        )
+
+
+        distancia += sp.Abs(
+            sp.simplify(
+                xb - xa
+            )
+        )
+
+
+    distancia = sp.simplify(
+        distancia
+    )
+
+
+    return {
+
+        "tipo":
+            "ok",
+
+        "mensagem":
+            "",
+
+        "pontos_exatos":
+            [
+                str(
+                    sp.simplify(
+                        ponto
+                    )
+                )
+                for ponto
+                in pontos
+            ],
+
+        "pontos_numericos":
+            [
+                numero_real(
+                    ponto
+                )
+                for ponto
+                in pontos
+            ],
+
+        "distancia_exata":
+            str(
+                distancia
+            ),
+
+        "distancia_numerica":
+            numero_real(
+                distancia
+            )
+    }
 
 
 # =============================================================
-# 22. RESULTADOS DOS EXTREMOS
+# 6. OBJETO PADRÃO DE SAÍDA
 # =============================================================
 
-if tipo_operacao == "extremos":
-
-    extremos_tipo = (
-        dados_extremos[
-            "tipo"
-        ]
-    )
-
-    extremos_mensagem = (
-        dados_extremos[
-            "mensagem"
-        ]
-    )
-
-
-    minimo_valor_exato = (
-        dados_extremos[
-            "min_val_exato"
-        ]
-    )
-
-    minimo_valor_numerico = (
-        dados_extremos[
-            "min_val_num"
-        ]
-    )
-
-    minimo_tempos_exatos = (
-        dados_extremos[
-            "min_t_exatos"
-        ]
-    )
-
-    minimo_tempos_numericos = (
-        dados_extremos[
-            "min_t_nums"
-        ]
-    )
-
-
-    maximo_valor_exato = (
-        dados_extremos[
-            "max_val_exato"
-        ]
-    )
-
-    maximo_valor_numerico = (
-        dados_extremos[
-            "max_val_num"
-        ]
-    )
-
-    maximo_tempos_exatos = (
-        dados_extremos[
-            "max_t_exatos"
-        ]
-    )
-
-    maximo_tempos_numericos = (
-        dados_extremos[
-            "max_t_nums"
-        ]
-    )
-
-
-# =============================================================
-# 23. OBJETO DEVOLVIDO AO JAVASCRIPT
-# =============================================================
-
-resultado_python = {
+resultado_dados = {
 
     "x":
         str(
@@ -1849,197 +1321,935 @@ resultado_python = {
         acao,
 
     "tipo_operacao":
-        tipo_operacao,
+        "",
 
-
-    # ---------------------------------------------------------
-    # EVENTOS
-    # ---------------------------------------------------------
 
     "grandeza_nome":
-        grandeza_nome,
+        "",
 
     "unidade":
-        unidade,
+        "",
 
     "alvo":
-        (
-            str(
-                sp.simplify(
-                    alvo
-                )
-            )
-            if alvo is not None
-            else ""
-        ),
+        "",
 
     "tipo_evento":
-        tipo_evento,
+        "nao_aplicavel",
 
     "solucoes_exatas":
-        solucoes_exatas,
+        [],
 
     "solucoes_numericas":
-        solucoes_numericas,
+        [],
 
-
-    # ---------------------------------------------------------
-    # AVALIAÇÃO
-    # ---------------------------------------------------------
 
     "instante_exato":
-        instante_exato,
-
-    "instante_numerico":
-        instante_numerico,
+        "",
 
     "avaliacao_valida":
-        avaliacao_valida,
+        False,
 
     "avaliacao_mensagem":
-        avaliacao_mensagem,
+        "",
 
     "x_avaliado_exato":
-        x_avaliado_exato,
+        "",
 
     "v_avaliado_exato":
-        v_avaliado_exato,
+        "",
 
     "a_avaliado_exato":
-        a_avaliado_exato,
+        "",
 
     "x_avaliado_numerico":
-        x_avaliado_numerico,
+        None,
 
     "v_avaliado_numerico":
-        v_avaliado_numerico,
+        None,
 
     "a_avaliado_numerico":
-        a_avaliado_numerico,
+        None,
 
-
-    # ---------------------------------------------------------
-    # EXTREMOS
-    # ---------------------------------------------------------
 
     "extremos_tipo":
-        extremos_tipo,
+        "nao_aplicavel",
 
     "extremos_mensagem":
-        extremos_mensagem,
+        "",
 
     "extremos_grandeza_nome":
-        extremos_grandeza_nome,
+        "",
 
     "extremos_unidade":
-        extremos_unidade,
+        "",
 
     "minimo_valor_exato":
-        minimo_valor_exato,
+        "",
 
     "minimo_valor_numerico":
-        minimo_valor_numerico,
+        None,
 
     "minimo_tempos_exatos":
-        minimo_tempos_exatos,
+        [],
 
     "minimo_tempos_numericos":
-        minimo_tempos_numericos,
+        [],
 
     "maximo_valor_exato":
-        maximo_valor_exato,
+        "",
 
     "maximo_valor_numerico":
-        maximo_valor_numerico,
+        None,
 
     "maximo_tempos_exatos":
-        maximo_tempos_exatos,
+        [],
 
     "maximo_tempos_numericos":
-        maximo_tempos_numericos,
+        [],
 
 
-    # ---------------------------------------------------------
-    # MÉDIAS
-    # ---------------------------------------------------------
+    "intervalo_valido":
+        False,
 
-    "medias_valida":
-        medias_valida,
+    "intervalo_mensagem":
+        "",
 
-    "medias_mensagem":
-        medias_mensagem,
+    "intervalo_t1_exato":
+        "",
 
-    "media_t1_exato":
-        media_t1_exato,
-
-    "media_t2_exato":
-        media_t2_exato,
-
-    "media_t1_numerico":
-        media_t1_numerico,
-
-    "media_t2_numerico":
-        media_t2_numerico,
+    "intervalo_t2_exato":
+        "",
 
     "delta_t_exato":
-        delta_t_exato,
+        "",
 
     "delta_t_numerico":
-        delta_t_numerico,
+        None,
 
     "x_t1_exato":
-        x_t1_exato,
+        "",
 
     "x_t2_exato":
-        x_t2_exato,
+        "",
 
     "x_t1_numerico":
-        x_t1_numerico,
+        None,
 
     "x_t2_numerico":
-        x_t2_numerico,
+        None,
 
     "v_t1_exato":
-        v_t1_exato,
+        "",
 
     "v_t2_exato":
-        v_t2_exato,
+        "",
 
     "v_t1_numerico":
-        v_t1_numerico,
+        None,
 
     "v_t2_numerico":
-        v_t2_numerico,
+        None,
 
     "deslocamento_exato":
-        deslocamento_exato,
+        "",
 
     "deslocamento_numerico":
-        deslocamento_numerico,
+        None,
 
     "velocidade_media_exato":
-        velocidade_media_exato,
+        "",
 
     "velocidade_media_numerico":
-        velocidade_media_numerico,
+        None,
 
     "aceleracao_media_exato":
-        aceleracao_media_exato,
+        "",
 
     "aceleracao_media_numerico":
-        aceleracao_media_numerico
+        None,
+
+
+    "distancia_tipo":
+        "nao_aplicavel",
+
+    "distancia_mensagem":
+        "",
+
+    "pontos_inversao_exatos":
+        [],
+
+    "pontos_inversao_numericos":
+        [],
+
+    "distancia_total_exato":
+        "",
+
+    "distancia_total_numerico":
+        None,
+
+    "velocidade_escalar_media_exato":
+        "",
+
+    "velocidade_escalar_media_numerico":
+        None
 }
 
 
-resultado_python
+# =============================================================
+# 7. MOSTRAR MODELO
+# =============================================================
+
+if acao == "modelo":
+
+    resultado_dados[
+        "tipo_operacao"
+    ] = "modelo"
+
+
+# =============================================================
+# 8. AVALIAR ESTADO
+# =============================================================
+
+elif acao == "avaliar":
+
+    resultado_dados[
+        "tipo_operacao"
+    ] = "avaliacao"
+
+
+    instante = sp.sympify(
+        valor_extra_js
+    )
+
+
+    if instante.free_symbols:
+
+        raise ValueError(
+            "O instante não pode conter variáveis."
+        )
+
+
+    instante_num = numero_real(
+        instante
+    )
+
+
+    resultado_dados[
+        "instante_exato"
+    ] = str(
+        sp.simplify(
+            instante
+        )
+    )
+
+
+    if (
+        instante_num
+        <
+        t_inicial
+        or
+        instante_num
+        >
+        t_final
+    ):
+
+        resultado_dados[
+            "avaliacao_valida"
+        ] = False
+
+        resultado_dados[
+            "avaliacao_mensagem"
+        ] = (
+            "O instante informado está "
+            "fora do domínio físico."
+        )
+
+
+    else:
+
+        resultado_dados[
+            "avaliacao_valida"
+        ] = True
+
+
+        x0 = sp.simplify(
+            x.subs(
+                t,
+                instante
+            )
+        )
+
+        v0 = sp.simplify(
+            v.subs(
+                t,
+                instante
+            )
+        )
+
+        a0 = sp.simplify(
+            a.subs(
+                t,
+                instante
+            )
+        )
+
+
+        resultado_dados[
+            "x_avaliado_exato"
+        ] = str(
+            x0
+        )
+
+        resultado_dados[
+            "v_avaliado_exato"
+        ] = str(
+            v0
+        )
+
+        resultado_dados[
+            "a_avaliado_exato"
+        ] = str(
+            a0
+        )
+
+
+        resultado_dados[
+            "x_avaliado_numerico"
+        ] = numero_real(
+            x0
+        )
+
+        resultado_dados[
+            "v_avaliado_numerico"
+        ] = numero_real(
+            v0
+        )
+
+        resultado_dados[
+            "a_avaliado_numerico"
+        ] = numero_real(
+            a0
+        )
+
+
+# =============================================================
+# 9. EVENTOS
+# =============================================================
+
+elif acao in (
+    "posicao",
+    "velocidade",
+    "aceleracao",
+    "parar"
+):
+
+    resultado_dados[
+        "tipo_operacao"
+    ] = "evento"
+
+
+    if acao == "posicao":
+
+        expressao_evento = x
+
+        alvo = sp.sympify(
+            valor_extra_js
+        )
+
+        nome = "x(t)"
+
+        unidade = "m"
+
+
+    elif acao == "velocidade":
+
+        expressao_evento = v
+
+        alvo = sp.sympify(
+            valor_extra_js
+        )
+
+        nome = "v(t)"
+
+        unidade = "m/s"
+
+
+    elif acao == "aceleracao":
+
+        expressao_evento = a
+
+        alvo = sp.sympify(
+            valor_extra_js
+        )
+
+        nome = "a(t)"
+
+        unidade = "m/s²"
+
+
+    else:
+
+        expressao_evento = v
+
+        alvo = sp.Integer(
+            0
+        )
+
+        nome = "v(t)"
+
+        unidade = "m/s"
+
+
+    if alvo.free_symbols:
+
+        raise ValueError(
+            "O valor-alvo não pode conter variáveis."
+        )
+
+
+    solucoes = sp.solveset(
+        expressao_evento
+        -
+        alvo,
+        t,
+        domain=dominio
+    )
+
+
+    resultado_dados[
+        "grandeza_nome"
+    ] = nome
+
+    resultado_dados[
+        "unidade"
+    ] = unidade
+
+    resultado_dados[
+        "alvo"
+    ] = str(
+        sp.simplify(
+            alvo
+        )
+    )
+
+
+    if solucoes == sp.EmptySet:
+
+        resultado_dados[
+            "tipo_evento"
+        ] = "nenhuma"
+
+
+    elif solucoes == dominio:
+
+        resultado_dados[
+            "tipo_evento"
+        ] = "todo_dominio"
+
+
+    elif isinstance(
+        solucoes,
+        sp.FiniteSet
+    ):
+
+        ordenadas = sorted(
+            list(
+                solucoes
+            ),
+            key=numero_real
+        )
+
+
+        resultado_dados[
+            "tipo_evento"
+        ] = "pontos"
+
+        resultado_dados[
+            "solucoes_exatas"
+        ] = [
+
+            str(
+                sp.simplify(
+                    solucao
+                )
+            )
+
+            for solucao
+            in ordenadas
+        ]
+
+        resultado_dados[
+            "solucoes_numericas"
+        ] = [
+
+            numero_real(
+                solucao
+            )
+
+            for solucao
+            in ordenadas
+        ]
+
+
+    else:
+
+        resultado_dados[
+            "tipo_evento"
+        ] = "nao_reduzido"
+
+        resultado_dados[
+            "solucoes_exatas"
+        ] = [
+            str(
+                solucoes
+            )
+        ]
+
+
+# =============================================================
+# 10. EXTREMOS
+# =============================================================
+
+elif acao in (
+    "extremos_posicao",
+    "extremos_velocidade"
+):
+
+    resultado_dados[
+        "tipo_operacao"
+    ] = "extremos"
+
+
+    if acao == "extremos_posicao":
+
+        dados_extremos = (
+            calcular_extremos_globais(
+                x,
+                v
+            )
+        )
+
+        nome = (
+            "posição x(t)"
+        )
+
+        unidade = "m"
+
+
+    else:
+
+        dados_extremos = (
+            calcular_extremos_globais(
+                v,
+                a
+            )
+        )
+
+        nome = (
+            "velocidade v(t)"
+        )
+
+        unidade = "m/s"
+
+
+    resultado_dados[
+        "extremos_tipo"
+    ] = dados_extremos[
+        "tipo"
+    ]
+
+    resultado_dados[
+        "extremos_mensagem"
+    ] = dados_extremos[
+        "mensagem"
+    ]
+
+    resultado_dados[
+        "extremos_grandeza_nome"
+    ] = nome
+
+    resultado_dados[
+        "extremos_unidade"
+    ] = unidade
+
+
+    resultado_dados[
+        "minimo_valor_exato"
+    ] = dados_extremos[
+        "min_val_exato"
+    ]
+
+    resultado_dados[
+        "minimo_valor_numerico"
+    ] = dados_extremos[
+        "min_val_num"
+    ]
+
+    resultado_dados[
+        "minimo_tempos_exatos"
+    ] = dados_extremos[
+        "min_t_exatos"
+    ]
+
+    resultado_dados[
+        "minimo_tempos_numericos"
+    ] = dados_extremos[
+        "min_t_nums"
+    ]
+
+
+    resultado_dados[
+        "maximo_valor_exato"
+    ] = dados_extremos[
+        "max_val_exato"
+    ]
+
+    resultado_dados[
+        "maximo_valor_numerico"
+    ] = dados_extremos[
+        "max_val_num"
+    ]
+
+    resultado_dados[
+        "maximo_tempos_exatos"
+    ] = dados_extremos[
+        "max_t_exatos"
+    ]
+
+    resultado_dados[
+        "maximo_tempos_numericos"
+    ] = dados_extremos[
+        "max_t_nums"
+    ]
+
+
+# =============================================================
+# 11. OPERAÇÕES EM INTERVALO
+# =============================================================
+
+elif acao in (
+    "medias_intervalo",
+    "distancia_escalar"
+):
+
+    resultado_dados[
+        "tipo_operacao"
+    ] = acao
+
+
+    t1 = sp.sympify(
+        intervalo_t1_js
+    )
+
+    t2 = sp.sympify(
+        intervalo_t2_js
+    )
+
+
+    if (
+        t1.free_symbols
+        or
+        t2.free_symbols
+    ):
+
+        raise ValueError(
+            "Os instantes do intervalo "
+            "não podem conter variáveis."
+        )
+
+
+    valido, mensagem = (
+        validar_intervalo(
+            t1,
+            t2
+        )
+    )
+
+
+    resultado_dados[
+        "intervalo_valido"
+    ] = valido
+
+    resultado_dados[
+        "intervalo_mensagem"
+    ] = mensagem
+
+    resultado_dados[
+        "intervalo_t1_exato"
+    ] = str(
+        sp.simplify(
+            t1
+        )
+    )
+
+    resultado_dados[
+        "intervalo_t2_exato"
+    ] = str(
+        sp.simplify(
+            t2
+        )
+    )
+
+
+    if valido:
+
+        delta_t = sp.simplify(
+            t2 - t1
+        )
+
+
+        x1 = sp.simplify(
+            x.subs(
+                t,
+                t1
+            )
+        )
+
+        x2 = sp.simplify(
+            x.subs(
+                t,
+                t2
+            )
+        )
+
+
+        v1 = sp.simplify(
+            v.subs(
+                t,
+                t1
+            )
+        )
+
+        v2 = sp.simplify(
+            v.subs(
+                t,
+                t2
+            )
+        )
+
+
+        deslocamento = sp.simplify(
+            x2 - x1
+        )
+
+
+        velocidade_media = sp.simplify(
+            deslocamento
+            /
+            delta_t
+        )
+
+
+        aceleracao_media = sp.simplify(
+            (
+                v2 - v1
+            )
+            /
+            delta_t
+        )
+
+
+        resultado_dados[
+            "delta_t_exato"
+        ] = str(
+            delta_t
+        )
+
+        resultado_dados[
+            "delta_t_numerico"
+        ] = numero_real(
+            delta_t
+        )
+
+
+        resultado_dados[
+            "x_t1_exato"
+        ] = str(
+            x1
+        )
+
+        resultado_dados[
+            "x_t2_exato"
+        ] = str(
+            x2
+        )
+
+        resultado_dados[
+            "x_t1_numerico"
+        ] = numero_real(
+            x1
+        )
+
+        resultado_dados[
+            "x_t2_numerico"
+        ] = numero_real(
+            x2
+        )
+
+
+        resultado_dados[
+            "v_t1_exato"
+        ] = str(
+            v1
+        )
+
+        resultado_dados[
+            "v_t2_exato"
+        ] = str(
+            v2
+        )
+
+        resultado_dados[
+            "v_t1_numerico"
+        ] = numero_real(
+            v1
+        )
+
+        resultado_dados[
+            "v_t2_numerico"
+        ] = numero_real(
+            v2
+        )
+
+
+        resultado_dados[
+            "deslocamento_exato"
+        ] = str(
+            deslocamento
+        )
+
+        resultado_dados[
+            "deslocamento_numerico"
+        ] = numero_real(
+            deslocamento
+        )
+
+
+        resultado_dados[
+            "velocidade_media_exato"
+        ] = str(
+            velocidade_media
+        )
+
+        resultado_dados[
+            "velocidade_media_numerico"
+        ] = numero_real(
+            velocidade_media
+        )
+
+
+        resultado_dados[
+            "aceleracao_media_exato"
+        ] = str(
+            aceleracao_media
+        )
+
+        resultado_dados[
+            "aceleracao_media_numerico"
+        ] = numero_real(
+            aceleracao_media
+        )
+
+
+        # -----------------------------------------------------
+        # DISTÂNCIA TOTAL E VELOCIDADE ESCALAR MÉDIA
+        # -----------------------------------------------------
+
+        if acao == "distancia_escalar":
+
+            dados_distancia = (
+                calcular_distancia_total(
+                    t1,
+                    t2
+                )
+            )
+
+
+            resultado_dados[
+                "distancia_tipo"
+            ] = dados_distancia[
+                "tipo"
+            ]
+
+            resultado_dados[
+                "distancia_mensagem"
+            ] = dados_distancia[
+                "mensagem"
+            ]
+
+            resultado_dados[
+                "pontos_inversao_exatos"
+            ] = dados_distancia[
+                "pontos_exatos"
+            ]
+
+            resultado_dados[
+                "pontos_inversao_numericos"
+            ] = dados_distancia[
+                "pontos_numericos"
+            ]
+
+
+            if (
+                dados_distancia[
+                    "tipo"
+                ]
+                ==
+                "ok"
+            ):
+
+                distancia = sp.sympify(
+                    dados_distancia[
+                        "distancia_exata"
+                    ]
+                )
+
+
+                velocidade_escalar_media = (
+                    sp.simplify(
+                        distancia
+                        /
+                        delta_t
+                    )
+                )
+
+
+                resultado_dados[
+                    "distancia_total_exato"
+                ] = str(
+                    distancia
+                )
+
+                resultado_dados[
+                    "distancia_total_numerico"
+                ] = numero_real(
+                    distancia
+                )
+
+
+                resultado_dados[
+                    "velocidade_escalar_media_exato"
+                ] = str(
+                    velocidade_escalar_media
+                )
+
+                resultado_dados[
+                    "velocidade_escalar_media_numerico"
+                ] = numero_real(
+                    velocidade_escalar_media
+                )
+
+
+else:
+
+    raise ValueError(
+        "Ação desconhecida."
+    )
+
+
+resultado_dados
             `);
 
-
-        /*
-            ====================================================
-            PYTHON -> JAVASCRIPT
-            ====================================================
-        */
 
         const dados =
             resposta.toJs({
@@ -2047,12 +2257,6 @@ resultado_python
                     Object.fromEntries
             });
 
-
-        /*
-            ====================================================
-            BLOCO COMUM
-            ====================================================
-        */
 
         let html = `
             <p>
@@ -2081,7 +2285,7 @@ resultado_python
 
         /*
             ====================================================
-            AVALIAÇÃO EM t0
+            AVALIAÇÃO
             ====================================================
         */
 
@@ -2423,38 +2627,41 @@ resultado_python
 
         /*
             ====================================================
-            DESLOCAMENTO E MÉDIAS
+            OPERAÇÕES EM INTERVALO
             ====================================================
         */
 
         if (
             dados.tipo_operacao ===
-            "medias"
+            "medias_intervalo"
+            ||
+            dados.tipo_operacao ===
+            "distancia_escalar"
         ) {
 
             html += `
                 <hr>
-
-                <p>
-                    <strong>
-                        Intervalo analisado:
-                    </strong>
-
-                    ${dados.media_t1_exato}
-                    ≤ t ≤
-                    ${dados.media_t2_exato}
-                    s
-                </p>
             `;
 
 
             if (
-                !dados.medias_valida
+                !dados.intervalo_valido
             ) {
 
                 html += `
                     <p>
-                        ${dados.medias_mensagem}
+                        <strong>
+                            Intervalo informado:
+                        </strong>
+
+                        ${dados.intervalo_t1_exato}
+                        →
+                        ${dados.intervalo_t2_exato}
+                        s
+                    </p>
+
+                    <p>
+                        ${dados.intervalo_mensagem}
                     </p>
                 `;
             }
@@ -2465,12 +2672,23 @@ resultado_python
                 html += `
                     <p>
                         <strong>
+                            Intervalo analisado:
+                        </strong>
+
+                        ${dados.intervalo_t1_exato}
+                        ≤ t ≤
+                        ${dados.intervalo_t2_exato}
+                        s
+                    </p>
+
+                    <p>
+                        <strong>
                             Estado nas extremidades:
                         </strong>
                     </p>
 
                     <p>
-                        x(${dados.media_t1_exato})
+                        x(${dados.intervalo_t1_exato})
                         =
                         ${formatarValor(
                             dados.x_t1_exato,
@@ -2482,7 +2700,7 @@ resultado_python
                     </p>
 
                     <p>
-                        x(${dados.media_t2_exato})
+                        x(${dados.intervalo_t2_exato})
                         =
                         ${formatarValor(
                             dados.x_t2_exato,
@@ -2494,7 +2712,7 @@ resultado_python
                     </p>
 
                     <p>
-                        v(${dados.media_t1_exato})
+                        v(${dados.intervalo_t1_exato})
                         =
                         ${formatarValor(
                             dados.v_t1_exato,
@@ -2506,7 +2724,7 @@ resultado_python
                     </p>
 
                     <p>
-                        v(${dados.media_t2_exato})
+                        v(${dados.intervalo_t2_exato})
                         =
                         ${formatarValor(
                             dados.v_t2_exato,
@@ -2556,21 +2774,94 @@ resultado_python
                             "m/s"
                         )}
                     </p>
-
-                    <p>
-                        <strong>
-                            Aceleração média:
-                        </strong>
-
-                        ${formatarValor(
-                            dados.aceleracao_media_exato,
-                            Number(
-                                dados.aceleracao_media_numerico
-                            ),
-                            "m/s²"
-                        )}
-                    </p>
                 `;
+
+
+                if (
+                    dados.tipo_operacao ===
+                    "medias_intervalo"
+                ) {
+
+                    html += `
+                        <p>
+                            <strong>
+                                Aceleração média:
+                            </strong>
+
+                            ${formatarValor(
+                                dados.aceleracao_media_exato,
+                                Number(
+                                    dados.aceleracao_media_numerico
+                                ),
+                                "m/s²"
+                            )}
+                        </p>
+                    `;
+                }
+
+
+                if (
+                    dados.tipo_operacao ===
+                    "distancia_escalar"
+                ) {
+
+                    if (
+                        dados.distancia_tipo ===
+                        "limitacao"
+                    ) {
+
+                        html += `
+                            <p>
+                                ${dados.distancia_mensagem}
+                            </p>
+                        `;
+                    }
+
+
+                    else {
+
+                        html += `
+                            <p>
+                                <strong>
+                                    Pontos usados para dividir o percurso:
+                                </strong>
+                            </p>
+
+                            ${listaTempos(
+                                dados.pontos_inversao_exatos,
+                                dados.pontos_inversao_numericos
+                            )}
+
+                            <p>
+                                <strong>
+                                    Distância total:
+                                </strong>
+
+                                ${formatarValor(
+                                    dados.distancia_total_exato,
+                                    Number(
+                                        dados.distancia_total_numerico
+                                    ),
+                                    "m"
+                                )}
+                            </p>
+
+                            <p>
+                                <strong>
+                                    Velocidade escalar média:
+                                </strong>
+
+                                ${formatarValor(
+                                    dados.velocidade_escalar_media_exato,
+                                    Number(
+                                        dados.velocidade_escalar_media_numerico
+                                    ),
+                                    "m/s"
+                                )}
+                            </p>
+                        `;
+                    }
+                }
             }
         }
 
@@ -2603,12 +2894,6 @@ resultado_python
     }
 }
 
-
-/*
-    ============================================================
-    EVENTOS DA INTERFACE
-    ============================================================
-*/
 
 seletorAcao.addEventListener(
     "change",
