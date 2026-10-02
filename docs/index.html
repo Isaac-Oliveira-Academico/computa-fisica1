@@ -1,194 +1,82 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>COMPUTA — Física 1</title>
-
     <link rel="stylesheet" href="style.css">
-
-    <script
-        src="https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js">
-    </script>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js"></script>
 </head>
-
 <body>
-
     <main>
-
         <h1>COMPUTA</h1>
-
         <h2>Solver Educacional de Física 1</h2>
-
         <p>
             Projeto para estudo de Cinemática Unidimensional
             e Métodos Computacionais.
         </p>
 
         <section>
-
             <h3>Movimento Retilíneo</h3>
 
-            <label for="funcao">
-                Função posição x(t):
-            </label>
-
-            <input
-                id="funcao"
-                type="text"
-                value="20*t - 5*t**3"
-            >
+            <label for="funcao">Função posição x(t):</label>
+            <input id="funcao" type="text" value="20*t - 5*t**3">
 
             <br><br>
 
-            <label for="t-inicial">
-                Tempo inicial:
-            </label>
+            <label for="t-inicial">Tempo inicial:</label>
+            <input id="t-inicial" type="number" value="-2">
 
-            <input
-                id="t-inicial"
-                type="number"
-                value="-2"
-            >
-
-            <label for="t-final">
-                Tempo final:
-            </label>
-
-            <input
-                id="t-final"
-                type="number"
-                value="2"
-            >
+            <label for="t-final">Tempo final:</label>
+            <input id="t-final" type="number" value="2">
 
             <br><br>
 
-            <label for="acao">
-                O que deseja descobrir?
-            </label>
-
+            <label for="acao">O que deseja descobrir?</label>
             <select id="acao">
-
-                <option value="modelo">
-                    Mostrar x(t), v(t) e a(t)
-                </option>
-
-                <option value="avaliar">
-                    Avaliar x(t), v(t) e a(t) em um instante
-                </option>
-
-                <option value="posicao">
-                    Quando a posição assume um valor?
-                </option>
-
-                <option value="velocidade">
-                    Quando a velocidade assume um valor?
-                </option>
-
-                <option value="aceleracao">
-                    Quando a aceleração assume um valor?
-                </option>
-
-                <option value="parar">
-                    Quando a partícula para?
-                </option>
-
-                <option value="extremos_posicao">
-                    Máximos e mínimos de posição
-                </option>
-
-                <option value="extremos_velocidade">
-                    Máximos e mínimos de velocidade
-                </option>
-
-                <option value="medias_intervalo">
-                    Deslocamento e médias em um intervalo
-                </option>
-
-                <option value="distancia_escalar">
-                    Distância total e velocidade escalar média
-                </option>
-
+                <option value="modelo">Mostrar x(t), v(t) e a(t)</option>
+                <option value="avaliar">Avaliar x(t), v(t) e a(t) em um instante</option>
+                <option value="posicao">Quando a posição assume um valor?</option>
+                <option value="velocidade">Quando a velocidade assume um valor?</option>
+                <option value="aceleracao">Quando a aceleração assume um valor?</option>
+                <option value="parar">Quando a partícula para?</option>
+                <option value="extremos_posicao">Máximos e mínimos de posição</option>
+                <option value="extremos_velocidade">Máximos e mínimos de velocidade</option>
+                <option value="medias_intervalo">Deslocamento e médias em um intervalo</option>
+                <option value="distancia_escalar">Distância total e velocidade escalar média</option>
+                <option value="sinais">Intervalos de sinal de v(t) e a(t)</option>
             </select>
 
             <br><br>
 
             <div id="entrada-extra-container" hidden>
-
-                <label
-                    id="entrada-extra-label"
-                    for="entrada-extra">
-                    Valor:
-                </label>
-
-                <input
-                    id="entrada-extra"
-                    type="text"
-                    value="0"
-                >
-
-                <p id="entrada-extra-ajuda">
-                </p>
-
+                <label id="entrada-extra-label" for="entrada-extra">Valor:</label>
+                <input id="entrada-extra" type="text" value="0">
+                <p id="entrada-extra-ajuda"></p>
             </div>
 
             <div id="intervalo-container" hidden>
+                <p>Intervalo de análise:</p>
 
-                <p>
-                    Intervalo de análise:
-                </p>
+                <label for="intervalo-t1">Instante t₁:</label>
+                <input id="intervalo-t1" type="text" value="0">
 
-                <label for="intervalo-t1">
-                    Instante t₁:
-                </label>
+                <label for="intervalo-t2">Instante t₂:</label>
+                <input id="intervalo-t2" type="text" value="1">
 
-                <input
-                    id="intervalo-t1"
-                    type="text"
-                    value="0"
-                >
-
-                <label for="intervalo-t2">
-                    Instante t₂:
-                </label>
-
-                <input
-                    id="intervalo-t2"
-                    type="text"
-                    value="1"
-                >
-
-                <p>
-                    Exemplos: 0, 3, 1/2 ou 2.5
-                </p>
-
+                <p>Exemplos: 0, 3, 1/2 ou 2.5</p>
             </div>
 
-            <button id="calcular" disabled>
-                Carregando Python...
-            </button>
-
+            <button id="calcular" disabled>Carregando Python...</button>
         </section>
 
         <section>
-
             <h3>Resultado</h3>
-
-            <div id="status">
-                Inicializando motor Python...
-            </div>
-
-            <div id="resultado">
-            </div>
-
+            <div id="status">Inicializando motor Python...</div>
+            <div id="resultado"></div>
         </section>
-
     </main>
 
     <script src="app.js"></script>
-
 </body>
-
 </html>
