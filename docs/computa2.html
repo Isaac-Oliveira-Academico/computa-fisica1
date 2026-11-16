@@ -1,0 +1,1130 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#101827">
+    <title>COMPUTA 2 — Laboratório Vetorial</title>
+
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <link rel="stylesheet" href="css/tema.css?v=2.0">
+    <link rel="stylesheet" href="css/computa2.css?v=2.0">
+</head>
+
+<body>
+
+    <header class="cabecalho-app">
+        <div class="identidade">
+            <p class="marca">COMPUTA</p>
+            <h1>Movimento Vetorial</h1>
+            <p class="descricao-app">
+                Cinemática vetorial — movimentos em duas e três dimensões.
+            </p>
+        </div>
+        <nav class="navegacao-modulos" aria-label="Navegação entre módulos">
+            <a class="botao-trocar-modulo" href="index.html">
+                ← Trocar módulo
+            </a>
+        </nav>
+    </header>
+
+
+    <div class="painel">
+        <p id="status" class="status">Inicializando motor Python...</p>
+    </div>
+
+    <div class="painel">
+        <h2>1. Configuração do movimento</h2>
+
+        <div class="campo">
+            <label for="nome">Nome do movimento</label>
+            <input id="nome" value="Meu movimento">
+        </div>
+
+        <div class="campo">
+            <label for="dimensao">Dimensão</label>
+            <select id="dimensao">
+                <option value="2">Movimento 2D</option>
+                <option value="3">Movimento 3D</option>
+            </select>
+        </div>
+
+        <h2>2. Funções de posição</h2>
+
+        <p class="ajuda">
+            Utilize a variável t. Exemplos: 2*t, sin(t), 3*cos(t),
+            t**2. A multiplicação deve ser explícita.
+        </p>
+
+        <div class="campo">
+            <label for="x">Posição x(t)</label>
+            <input id="x" value="10*t">
+        </div>
+
+        <div class="campo">
+            <label for="y">Posição y(t)</label>
+            <input id="y" value="20*t - 4.9*t**2">
+        </div>
+
+        <div class="campo">
+            <label for="z">Posição z(t)</label>
+            <input id="z" value="3*t" disabled>
+        </div>
+
+        <h2>3. Domínio temporal</h2>
+
+        <div class="grade">
+            <div class="campo">
+                <label for="inicio">Tempo inicial (s)</label>
+                <input id="inicio" type="number" step="any" value="0">
+            </div>
+
+            <div class="campo">
+                <label for="fim">Tempo final (s)</label>
+                <input id="fim" type="number" step="any" value="4.081632653">
+            </div>
+        </div>
+
+        <button id="exemplo2d" type="button">Carregar exemplo 2D</button>
+        <button id="exemplo3d" type="button">Carregar exemplo 3D</button>
+
+        <button id="calcular" class="principal" type="button" disabled>
+            Calcular movimento
+        </button>
+    </div>
+
+    <div class="painel">
+        <h2>4. Resultados matemáticos</h2>
+        <div id="resultado">Aguardando um cálculo.</div>
+
+        <details>
+            <summary>Ver resposta técnica completa (JSON)</summary>
+            <pre id="json">Nenhum resultado disponível.</pre>
+        </details>
+
+        <button
+            id="visualizar-trajetoria"
+            class="principal"
+            type="button"
+            hidden
+        >
+            Visualizar trajetória
+        </button>
+    </div>
+
+    <div class="painel" id="painel-visualizacao" hidden>
+        <h2>5. Visualização e animação do movimento</h2>
+
+        <p class="ajuda">
+            Explore a trajetória da partícula, acompanhe sua posição
+            e observe os vetores velocidade e aceleração.
+        </p>
+
+        <h3>Controles da animação</h3>
+
+        <div class="controles">
+            <div>
+                <label for="controle-tempo">Instante de observação</label>
+                <input
+                    id="controle-tempo"
+                    type="range"
+                    min="0"
+                    max="300"
+                    value="0"
+                    step="1"
+                    disabled
+                >
+            </div>
+
+            <div class="tempo-atual" id="tempo-atual">
+                t = -- s
+            </div>
+        </div>
+
+        <div class="acoes-animacao">
+            <button id="reproduzir" class="principal" disabled>
+                ▶ Reproduzir
+            </button>
+
+            <button id="pausar" disabled>
+                ⏸ Pausar
+            </button>
+
+            <button id="reiniciar" disabled>
+                ↺ Reiniciar
+            </button>
+        </div>
+
+        <div class="campo">
+            <label for="velocidade-animacao">Velocidade da animação</label>
+            <select id="velocidade-animacao">
+                <option value="0.5">0,5x — Lenta</option>
+                <option value="1" selected>1x — Normal</option>
+                <option value="2">2x — Rápida</option>
+                <option value="4">4x — Muito rápida</option>
+            </select>
+        </div>
+
+        <h3>Estado instantâneo da partícula</h3>
+        <div id="estado-atual" class="estado-atual">
+            Aguardando visualização.
+        </div>
+
+        <h3>Gráficos do movimento</h3>
+        <div class="graficos">
+            <div id="grafico-trajetoria" class="grafico"></div>
+            <div id="grafico-temporal" class="grafico"></div>
+        </div>
+    </div>
+
+    <script>
+        const status = document.getElementById("status");
+        const resultado = document.getElementById("resultado");
+        const json = document.getElementById("json");
+
+        const dimensao = document.getElementById("dimensao");
+        const campoZ = document.getElementById("z");
+
+        const botaoCalcular = document.getElementById("calcular");
+        const botaoVisualizar = document.getElementById("visualizar-trajetoria");
+        const painelVisualizacao = document.getElementById("painel-visualizacao");
+        const controleTempo = document.getElementById("controle-tempo");
+
+        const botaoReproduzir = document.getElementById("reproduzir");
+        const botaoPausar = document.getElementById("pausar");
+        const botaoReiniciar = document.getElementById("reiniciar");
+
+        let proximoId = 1;
+        let workerPronto = false;
+        let dadosCalculados = null;
+        let dadosAtuais = null;
+        let visualizacaoPreparada = false;
+        let indiceAtual = 0;
+        let temporizador = null;
+
+        const worker = new Worker("worker.js?v=2.0");
+
+        function atualizarDimensao() {
+            const tresD = dimensao.value === "3";
+
+            campoZ.disabled = !tresD;
+            campoZ.required = tresD;
+
+            if (tresD && !campoZ.value.trim()) {
+                campoZ.value = "3*t";
+            }
+        }
+
+        dimensao.addEventListener("change", atualizarDimensao);
+
+        function pararAnimacao() {
+            if (temporizador !== null) {
+                clearInterval(temporizador);
+                temporizador = null;
+            }
+        }
+
+        function limparVisualizacao() {
+            pararAnimacao();
+
+            dadosCalculados = null;
+            dadosAtuais = null;
+            visualizacaoPreparada = false;
+
+            botaoVisualizar.hidden = true;
+            botaoVisualizar.disabled = false;
+            painelVisualizacao.hidden = true;
+
+            controleTempo.disabled = true;
+            botaoReproduzir.disabled = true;
+            botaoPausar.disabled = true;
+            botaoReiniciar.disabled = true;
+
+            document.getElementById("tempo-atual").textContent = "t = -- s";
+
+            document.getElementById("estado-atual").textContent =
+                "Aguardando visualização.";
+
+            Plotly.purge("grafico-trajetoria");
+            Plotly.purge("grafico-temporal");
+        }
+
+        function carregarExemplo2D() {
+            pararAnimacao();
+
+            dimensao.value = "2";
+            document.getElementById("nome").value = "Lançamento oblíquo";
+            document.getElementById("x").value = "10*t";
+            document.getElementById("y").value = "20*t - 4.9*t**2";
+            campoZ.value = "";
+            document.getElementById("inicio").value = "0";
+            document.getElementById("fim").value = "4.081632653";
+
+            atualizarDimensao();
+
+            resultado.textContent =
+                "Exemplo 2D carregado. Clique em Calcular movimento.";
+
+            limparVisualizacao();
+        }
+
+        function carregarExemplo3D() {
+            pararAnimacao();
+
+            dimensao.value = "3";
+            document.getElementById("nome").value = "Movimento helicoidal";
+            document.getElementById("x").value = "2*cos(t)";
+            document.getElementById("y").value = "2*sin(t)";
+            campoZ.value = "3*t";
+            document.getElementById("inicio").value = "0";
+            document.getElementById("fim").value = "6.283185307";
+
+            atualizarDimensao();
+
+            resultado.textContent =
+                "Exemplo 3D carregado. Clique em Calcular movimento.";
+
+            limparVisualizacao();
+        }
+
+        document.getElementById("exemplo2d").onclick = carregarExemplo2D;
+        document.getElementById("exemplo3d").onclick = carregarExemplo3D;
+
+        function vetor(v) {
+            if (!Array.isArray(v)) return "Indisponível";
+
+            return "(" + v.map(n => Number(n).toFixed(5)).join(", ") + ")";
+        }
+
+        function formatarEventos(eventos, tipo) {
+            if (!eventos || !eventos.disponivel) {
+                return "Indisponível";
+            }
+
+            if (eventos.dados === null) {
+                if (tipo === "rapidez") {
+                    return "Rapidez constante no intervalo.";
+                }
+
+                if (tipo === "repouso") {
+                    return "Repouso durante todo o intervalo.";
+                }
+
+                return "Componente identicamente nula.";
+            }
+
+            if (Array.isArray(eventos.dados) && eventos.dados.length === 0) {
+                return "Nenhum evento encontrado.";
+            }
+
+            if (Array.isArray(eventos.dados)) {
+                return eventos.dados.map(e =>
+                    `t = ${Number(e.instante).toFixed(5)} s (${e.tipo})`
+                ).join("\n");
+            }
+
+            if (typeof eventos.dados === "object") {
+                return Object.entries(eventos.dados).map(([eixo, lista]) => {
+                    if (lista === null) {
+                        return `${eixo}: componente identicamente nula`;
+                    }
+
+                    if (!lista.length) {
+                        return `${eixo}: nenhum evento`;
+                    }
+
+                    return `${eixo}: ` + lista.map(e =>
+                        `t=${Number(e.instante).toFixed(5)} s (${e.tipo})`
+                    ).join("; ");
+                }).join("\n");
+            }
+
+            return String(eventos.dados);
+        }
+
+        function apresentar(dados) {
+            const r = dados.resumo;
+            const linhas = [];
+
+            linhas.push(`MOVIMENTO: ${dados.nome}`);
+            linhas.push(`DIMENSÃO: ${dados.dimensao}D`);
+            linhas.push(`INTERVALO: ${dados.t_inicial} a ${dados.t_final} s`);
+            linhas.push("");
+
+            linhas.push("FUNÇÕES:");
+
+            for (const eixo of dados.eixos) {
+                linhas.push(`Posição ${eixo}(t) = ${dados.expressoes.posicao[eixo]}`);
+                linhas.push(`Velocidade ${eixo}(t) = ${dados.expressoes.velocidade[eixo]}`);
+                linhas.push(`Aceleração ${eixo}(t) = ${dados.expressoes.aceleracao[eixo]}`);
+            }
+
+            linhas.push("");
+            linhas.push("ESTADO INICIAL:");
+            linhas.push(`Posição: ${vetor(dados.estado_inicial.posicao)} m`);
+            linhas.push(`Velocidade: ${vetor(dados.estado_inicial.velocidade)} m/s`);
+            linhas.push(`Aceleração: ${vetor(dados.estado_inicial.aceleracao)} m/s²`);
+            linhas.push(`Rapidez: ${dados.estado_inicial.rapidez.toFixed(5)} m/s`);
+
+            linhas.push("");
+            linhas.push("ESTADO FINAL:");
+            linhas.push(`Posição: ${vetor(dados.estado_final.posicao)} m`);
+            linhas.push(`Velocidade: ${vetor(dados.estado_final.velocidade)} m/s`);
+            linhas.push(`Aceleração: ${vetor(dados.estado_final.aceleracao)} m/s²`);
+            linhas.push(`Rapidez: ${dados.estado_final.rapidez.toFixed(5)} m/s`);
+
+            linhas.push("");
+            linhas.push("RESUMO DO MOVIMENTO:");
+            linhas.push(`Deslocamento: ${vetor(r.deslocamento)} m`);
+            linhas.push(`Módulo do deslocamento: ${r.modulo_deslocamento.toFixed(5)} m`);
+            linhas.push(`Distância percorrida: ${r.distancia_percorrida.toFixed(5)} m`);
+            linhas.push(`Rapidez média: ${r.rapidez_media.toFixed(5)} m/s`);
+
+            linhas.push("");
+            linhas.push("EVENTOS DE VELOCIDADE POR EIXO:");
+            linhas.push(formatarEventos(dados.eventos_por_eixo, "eixo"));
+
+            linhas.push("");
+            linhas.push("REPOUSO VETORIAL:");
+            linhas.push(formatarEventos(dados.eventos_repouso, "repouso"));
+
+            linhas.push("");
+            linhas.push("EXTREMOS DA RAPIDEZ:");
+            linhas.push(formatarEventos(dados.extremos_rapidez, "rapidez"));
+
+            resultado.textContent = linhas.join("\n");
+            json.textContent = JSON.stringify(dados, null, 2);
+        }
+
+        function limites(vetorValores) {
+            const min = Math.min(...vetorValores);
+            const max = Math.max(...vetorValores);
+            const amplitude = max - min;
+
+            const margem = amplitude > 0
+                ? amplitude * 0.12
+                : Math.max(Math.abs(max) * 0.12, 1);
+
+            return {
+                min: min - margem,
+                max: max + margem,
+                amplitude: Math.max(amplitude, 1e-9)
+            };
+        }
+
+        function criarTracoVetor(nome, posicao, componentes, escala) {
+            const final = posicao.map(
+                (valor, i) => valor + componentes[i] * escala
+            );
+
+            return {
+                type: "scatter3d",
+                mode: "lines+markers",
+                name: nome,
+                x: [posicao[0], final[0]],
+                y: [posicao[1], final[1]],
+                z: [posicao[2], final[2]],
+                line: { width: 7 },
+                marker: { size: [2, 4] },
+                hovertemplate:
+                    `${nome}<br>x: %{x:.4f}<br>y: %{y:.4f}<br>z: %{z:.4f}<extra></extra>`
+            };
+        }
+
+
+        async function construirGraficoTrajetoria(dados) {
+            const a = dados.amostras;
+            const x = a.posicao.x;
+            const y = a.posicao.y;
+            const z = dados.dimensao === 3 ? a.posicao.z : null;
+
+            const traces = [];
+
+            if (dados.dimensao === 2) {
+                traces.push({
+                    type: "scatter",
+                    mode: "lines",
+                    name: "Trajetória",
+                    x,
+                    y,
+                    line: { width: 3 },
+                    hovertemplate:
+                        "x: %{x:.4f} m<br>y: %{y:.4f} m<extra>Trajetória</extra>"
+                });
+
+                traces.push({
+                    type: "scatter",
+                    mode: "markers",
+                    name: "Partícula",
+                    x: [x[0]],
+                    y: [y[0]],
+                    marker: { size: 13, color: "#e53935" },
+                    hovertemplate:
+                        "Posição atual<br>x: %{x:.4f}<br>y: %{y:.4f}<extra></extra>"
+                });
+
+                traces.push({
+                    type: "scatter",
+                    mode: "lines+markers",
+                    name: "Velocidade",
+                    x: [x[0], x[0]],
+                    y: [y[0], y[0]],
+                    line: { width: 4, color: "#1685d4" },
+                    marker: { size: [0, 7] }
+                });
+
+                traces.push({
+                    type: "scatter",
+                    mode: "lines+markers",
+                    name: "Aceleração",
+                    x: [x[0], x[0]],
+                    y: [y[0], y[0]],
+                    line: { width: 4, color: "#e58b22" },
+                    marker: { size: [0, 7] }
+                });
+
+                const layout = {
+                    title: "Trajetória da partícula — plano XY",
+                    xaxis: {
+                        title: "Posição x (m)",
+                        zeroline: true
+                    },
+                    yaxis: {
+                        title: "Posição y (m)",
+                        zeroline: true,
+                        scaleanchor: "x",
+                        scaleratio: 1
+                    },
+                    margin: { l: 65, r: 25, t: 55, b: 60 },
+                    legend: { orientation: "h", y: -0.2 },
+                    hovermode: "closest"
+                };
+
+                await Plotly.newPlot(
+                    "grafico-trajetoria",
+                    traces,
+                    layout,
+                    { responsive: true }
+                );
+
+            } else {
+                traces.push({
+                    type: "scatter3d",
+                    mode: "lines",
+                    name: "Trajetória",
+                    x,
+                    y,
+                    z,
+                    line: { width: 5 },
+                    hovertemplate:
+                        "x: %{x:.4f}<br>y: %{y:.4f}<br>z: %{z:.4f}<extra>Trajetória</extra>"
+                });
+
+                traces.push({
+                    type: "scatter3d",
+                    mode: "markers",
+                    name: "Partícula",
+                    x: [x[0]],
+                    y: [y[0]],
+                    z: [z[0]],
+                    marker: { size: 6, color: "#e53935" }
+                });
+
+                traces.push({
+                    type: "scatter3d",
+                    mode: "lines+markers",
+                    name: "Velocidade",
+                    x: [x[0], x[0]],
+                    y: [y[0], y[0]],
+                    z: [z[0], z[0]],
+                    line: { width: 7, color: "#1685d4" },
+                    marker: { size: [0, 4] }
+                });
+
+                traces.push({
+                    type: "scatter3d",
+                    mode: "lines+markers",
+                    name: "Aceleração",
+                    x: [x[0], x[0]],
+                    y: [y[0], y[0]],
+                    z: [z[0], z[0]],
+                    line: { width: 7, color: "#e58b22" },
+                    marker: { size: [0, 4] }
+                });
+
+                const layout = {
+                    title: "Trajetória espacial — 3D",
+                    scene: {
+                        xaxis: { title: "x (m)" },
+                        yaxis: { title: "y (m)" },
+                        zaxis: { title: "z (m)" },
+                        aspectmode: "data",
+                        camera: {
+                            eye: { x: 1.6, y: 1.6, z: 1.2 }
+                        }
+                    },
+                    margin: { l: 0, r: 0, t: 55, b: 20 },
+                    legend: { orientation: "h" }
+                };
+
+                await Plotly.newPlot(
+                    "grafico-trajetoria",
+                    traces,
+                    layout,
+                    { responsive: true }
+                );
+            }
+        }
+
+
+        async function construirGraficoTemporal(dados) {
+            const a = dados.amostras;
+            const traces = [];
+
+            for (const eixo of dados.eixos) {
+                traces.push({
+                    type: "scatter",
+                    mode: "lines",
+                    name: `Posição ${eixo}(t)`,
+                    x: a.tempo,
+                    y: a.posicao[eixo],
+                    yaxis: "y",
+                    line: { width: 2 },
+                    hovertemplate:
+                        `${eixo}(t): %{y:.5f} m<br>t: %{x:.5f} s<extra></extra>`
+                });
+            }
+
+            traces.push({
+                type: "scatter",
+                mode: "lines",
+                name: "Rapidez",
+                x: a.tempo,
+                y: a.rapidez,
+                yaxis: "y2",
+                line: { width: 2, dash: "dash" },
+                hovertemplate:
+                    "Rapidez: %{y:.5f} m/s<br>t: %{x:.5f} s<extra></extra>"
+            });
+
+            // Um marcador independente para cada componente da posição.
+            for (const eixo of dados.eixos) {
+                traces.push({
+                    type: "scatter",
+                    mode: "markers",
+                    name: `Instante atual ${eixo}`,
+                    x: [a.tempo[0]],
+                    y: [a.posicao[eixo][0]],
+                    yaxis: "y",
+                    marker: { size: 9, color: "#e53935" },
+                    showlegend: false
+                });
+            }
+
+            // Marcador independente para a rapidez.
+            traces.push({
+                type: "scatter",
+                mode: "markers",
+                name: "Rapidez atual",
+                x: [a.tempo[0]],
+                y: [a.rapidez[0]],
+                yaxis: "y2",
+                marker: { size: 9, color: "#e58b22" },
+                showlegend: false
+            });
+
+            const layout = {
+                title: "Evolução temporal da posição e rapidez",
+                xaxis: {
+                    title: "Tempo (s)"
+                },
+                yaxis: {
+                    title: "Posição (m)",
+                    zeroline: true
+                },
+                yaxis2: {
+                    title: "Rapidez (m/s)",
+                    overlaying: "y",
+                    side: "right",
+                    showgrid: false
+                },
+                margin: { l: 65, r: 65, t: 55, b: 60 },
+                legend: { orientation: "h", y: -0.25 },
+                hovermode: "x unified"
+            };
+
+            await Plotly.newPlot(
+                "grafico-temporal",
+                traces,
+                layout,
+                { responsive: true }
+            );
+        }
+
+
+        async function atualizarGraficoTemporal(indice) {
+            const a = dadosAtuais.amostras;
+            const eixos = dadosAtuais.eixos;
+            const tempo = a.tempo[indice];
+
+            const indicesTracos = [];
+            const novosX = [];
+            const novosY = [];
+
+            // Os marcadores começam depois das linhas de posição
+            // e da linha de rapidez.
+            const primeiroMarcador = eixos.length + 1;
+
+            for (let i = 0; i < eixos.length; i++) {
+                indicesTracos.push(primeiroMarcador + i);
+                novosX.push([tempo]);
+                novosY.push([a.posicao[eixos[i]][indice]]);
+            }
+
+            // Último marcador: rapidez no eixo Y secundário.
+            indicesTracos.push(primeiroMarcador + eixos.length);
+            novosX.push([tempo]);
+            novosY.push([a.rapidez[indice]]);
+
+            await Plotly.restyle(
+                "grafico-temporal",
+                {
+                    x: novosX,
+                    y: novosY
+                },
+                indicesTracos
+            );
+        }
+
+
+        async function atualizarVetores(indice) {
+            const a = dadosAtuais.amostras;
+
+            const posicao = dadosAtuais.eixos.map(
+                eixo => a.posicao[eixo][indice]
+            );
+
+            const velocidade = dadosAtuais.eixos.map(
+                eixo => a.velocidade[eixo][indice]
+            );
+
+            const aceleracao = dadosAtuais.eixos.map(
+                eixo => a.aceleracao[eixo][indice]
+            );
+
+            const amplitudes = dadosAtuais.eixos.map(eixo =>
+                limites(a.posicao[eixo]).amplitude
+            );
+
+            const escalaPosicao = Math.max(...amplitudes);
+            const moduloV = Math.hypot(...velocidade);
+            const moduloA = Math.hypot(...aceleracao);
+
+            const escalaV = moduloV > 0
+                ? escalaPosicao * 0.16 / moduloV
+                : 0;
+
+            const escalaA = moduloA > 0
+                ? escalaPosicao * 0.16 / moduloA
+                : 0;
+
+            const finalV = posicao.map(
+                (valor, i) => valor + velocidade[i] * escalaV
+            );
+
+            const finalA = posicao.map(
+                (valor, i) => valor + aceleracao[i] * escalaA
+            );
+
+            if (dadosAtuais.dimensao === 2) {
+                await Plotly.restyle(
+                    "grafico-trajetoria",
+                    {
+                        x: [
+                            [posicao[0]],
+                            [posicao[0], finalV[0]],
+                            [posicao[0], finalA[0]]
+                        ],
+                        y: [
+                            [posicao[1]],
+                            [posicao[1], finalV[1]],
+                            [posicao[1], finalA[1]]
+                        ]
+                    },
+                    [1, 2, 3]
+                );
+            } else {
+                await Plotly.restyle(
+                    "grafico-trajetoria",
+                    {
+                        x: [
+                            [posicao[0]],
+                            [posicao[0], finalV[0]],
+                            [posicao[0], finalA[0]]
+                        ],
+                        y: [
+                            [posicao[1]],
+                            [posicao[1], finalV[1]],
+                            [posicao[1], finalA[1]]
+                        ],
+                        z: [
+                            [posicao[2]],
+                            [posicao[2], finalV[2]],
+                            [posicao[2], finalA[2]]
+                        ]
+                    },
+                    [1, 2, 3]
+                );
+            }
+        }
+
+
+        async function atualizarInstante(indice) {
+            if (!dadosAtuais) return;
+
+            const a = dadosAtuais.amostras;
+            const n = a.tempo.length;
+
+            indiceAtual = Math.max(0, Math.min(n - 1, indice));
+
+            const tempo = a.tempo[indiceAtual];
+
+            controleTempo.value = indiceAtual;
+
+            document.getElementById("tempo-atual").textContent =
+                `t = ${tempo.toFixed(5)} s`;
+
+            const posicao = dadosAtuais.eixos.map(
+                eixo => a.posicao[eixo][indiceAtual]
+            );
+
+            const velocidade = dadosAtuais.eixos.map(
+                eixo => a.velocidade[eixo][indiceAtual]
+            );
+
+            const aceleracao = dadosAtuais.eixos.map(
+                eixo => a.aceleracao[eixo][indiceAtual]
+            );
+
+            document.getElementById("estado-atual").textContent =
+                `Tempo: ${tempo.toFixed(5)} s
+` +
+                `Posição: ${vetor(posicao)} m
+` +
+                `Velocidade: ${vetor(velocidade)} m/s
+` +
+                `Aceleração: ${vetor(aceleracao)} m/s²
+` +
+                `Rapidez: ${a.rapidez[indiceAtual].toFixed(5)} m/s
+` +
+                `Módulo da aceleração: ${a.modulo_aceleracao[indiceAtual].toFixed(5)} m/s²`;
+
+            await Promise.all([
+                atualizarVetores(indiceAtual),
+                atualizarGraficoTemporal(indiceAtual)
+            ]);
+        }
+
+
+        async function prepararVisualizacao(dados) {
+            pararAnimacao();
+
+            dadosAtuais = dados;
+
+            controleTempo.min = 0;
+            controleTempo.max = dados.amostras.tempo.length - 1;
+            controleTempo.step = 1;
+            controleTempo.value = 0;
+            controleTempo.disabled = false;
+
+            botaoReproduzir.disabled = false;
+            botaoPausar.disabled = false;
+            botaoReiniciar.disabled = false;
+
+            await Promise.all([
+                construirGraficoTrajetoria(dados),
+                construirGraficoTemporal(dados)
+            ]);
+
+            await atualizarInstante(0);
+        }
+
+
+        function reproduzir() {
+            if (!dadosAtuais || temporizador !== null) return;
+
+            if (indiceAtual >= dadosAtuais.amostras.tempo.length - 1) {
+                atualizarInstante(0);
+            }
+
+            let atualizacaoEmCurso = false;
+
+            temporizador = setInterval(async () => {
+                if (atualizacaoEmCurso || !dadosAtuais) return;
+
+                atualizacaoEmCurso = true;
+
+                try {
+                    const velocidade = Number(
+                        document.getElementById("velocidade-animacao").value
+                    );
+
+                    const passo = Math.max(1, Math.round(velocidade * 3));
+                    const proximo = indiceAtual + passo;
+                    const ultimo = dadosAtuais.amostras.tempo.length - 1;
+
+                    if (proximo >= ultimo) {
+                        await atualizarInstante(ultimo);
+                        pararAnimacao();
+                        return;
+                    }
+
+                    await atualizarInstante(proximo);
+
+                } catch (erro) {
+                    pararAnimacao();
+                    status.textContent =
+                        "Erro durante a atualização da animação.";
+                    console.error(erro);
+
+                } finally {
+                    atualizacaoEmCurso = false;
+                }
+            }, 50);
+        }
+
+        function pausar() {
+            pararAnimacao();
+        }
+
+
+        async function reiniciar() {
+            pararAnimacao();
+
+            if (dadosAtuais) {
+                await atualizarInstante(0);
+            }
+        }
+
+        controleTempo.addEventListener("input", async () => {
+            pararAnimacao();
+            await atualizarInstante(Number(controleTempo.value));
+        });
+
+        botaoReproduzir.onclick = reproduzir;
+        botaoPausar.onclick = pausar;
+        botaoReiniciar.onclick = reiniciar;
+
+        botaoVisualizar.onclick = async () => {
+            if (!dadosCalculados) return;
+
+            if (visualizacaoPreparada) {
+                painelVisualizacao.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start"
+                });
+                return;
+            }
+
+            botaoVisualizar.disabled = true;
+            botaoVisualizar.textContent = "Preparando visualização...";
+
+            painelVisualizacao.hidden = false;
+            painelVisualizacao.scrollIntoView({
+                behavior: "smooth",
+                block: "start"
+            });
+
+            try {
+                // Aguarda o navegador exibir o painel antes de dimensionar o Plotly.
+                await new Promise(resolve => requestAnimationFrame(resolve));
+
+                await prepararVisualizacao(dadosCalculados);
+
+                visualizacaoPreparada = true;
+                botaoVisualizar.textContent = "Trajetória exibida";
+                status.textContent =
+                    "Visualização pronta. Use os controles para explorar o movimento.";
+
+            } catch (erro) {
+                console.error(erro);
+
+                status.textContent =
+                    "O cálculo está válido, mas houve erro ao montar a visualização.";
+
+                botaoVisualizar.disabled = false;
+                botaoVisualizar.textContent = "Tentar visualizar novamente";
+            }
+        };
+
+        worker.onmessage = async event => {
+            const mensagem = event.data;
+
+            if (mensagem.tipo === "status") {
+                status.textContent = mensagem.mensagem;
+                return;
+            }
+
+            if (mensagem.tipo === "ready") {
+                workerPronto = true;
+                botaoCalcular.disabled = false;
+                status.textContent =
+                    "Motor Python inicializado. Pronto para calcular.";
+                return;
+            }
+
+            if (mensagem.tipo === "fatal" || mensagem.tipo === "erro") {
+                status.textContent = "Ocorreu um erro no motor.";
+
+                resultado.textContent = JSON.stringify(
+                    mensagem,
+                    null,
+                    2
+                );
+
+                json.textContent = resultado.textContent;
+                botaoCalcular.disabled = false;
+                return;
+            }
+
+            if (mensagem.tipo === "resultado") {
+                botaoCalcular.disabled = false;
+
+                if (mensagem.dados && mensagem.dados.ok) {
+                    status.textContent =
+                        "Cálculo concluído com sucesso.";
+
+                    apresentar(mensagem.dados);
+
+                    dadosCalculados = mensagem.dados;
+                    botaoVisualizar.hidden = false;
+                    botaoVisualizar.disabled = false;
+                    botaoVisualizar.textContent = "Visualizar trajetória";
+
+                    status.textContent =
+                        "Cálculo concluído. Resultados disponíveis; visualização aguardando solicitação." ;
+                } else {
+                    status.textContent =
+                        "O cálculo retornou uma resposta inesperada.";
+
+                    resultado.textContent = JSON.stringify(
+                        mensagem,
+                        null,
+                        2
+                    );
+                }
+            }
+        };
+
+        worker.onerror = event => {
+            status.textContent =
+                "Falha na comunicação com o Worker.";
+
+            resultado.textContent =
+                event.message || "Erro desconhecido.";
+
+            botaoCalcular.disabled = false;
+        };
+
+        botaoCalcular.onclick = () => {
+            if (!workerPronto) {
+                status.textContent =
+                    "Aguarde a inicialização do motor.";
+                return;
+            }
+
+            const tresD = dimensao.value === "3";
+
+            const nome = document.getElementById("nome").value.trim();
+            const x = document.getElementById("x").value.trim();
+            const y = document.getElementById("y").value.trim();
+            const z = campoZ.value.trim();
+
+            const inicio = Number(
+                document.getElementById("inicio").value
+            );
+
+            const fim = Number(
+                document.getElementById("fim").value
+            );
+
+            if (!x || !y || (tresD && !z)) {
+                status.textContent =
+                    "Preencha todas as funções necessárias.";
+                return;
+            }
+
+            if (
+                !Number.isFinite(inicio) ||
+                !Number.isFinite(fim) ||
+                fim <= inicio
+            ) {
+                status.textContent =
+                    "Informe um intervalo de tempo válido.";
+                return;
+            }
+
+            const payload = {
+                nome: nome || "Movimento vetorial",
+                x,
+                y,
+                t_inicial: inicio,
+                t_final: fim,
+                pontos_grafico: 301,
+                amostras_integracao: 1001
+            };
+
+            if (tresD) {
+                payload.z = z;
+            }
+
+            limparVisualizacao();
+
+            botaoCalcular.disabled = true;
+            status.textContent = "Calculando movimento...";
+            resultado.textContent =
+                "Aguarde o processamento matemático.";
+
+            json.textContent = "Aguardando resposta do Worker.";
+
+            worker.postMessage({
+                tipo: "calcular_vetorial",
+                id: proximoId++,
+                payload
+            });
+        };
+
+        function invalidarCalculo() {
+            if (!dadosCalculados && !visualizacaoPreparada) return;
+
+            limparVisualizacao();
+
+            resultado.textContent =
+                "Os parâmetros foram alterados. Calcule novamente para atualizar os resultados.";
+
+            json.textContent = "Aguardando novo cálculo.";
+
+            status.textContent =
+                "Parâmetros alterados. É necessário calcular novamente.";
+        }
+
+        [
+            "nome",
+            "dimensao",
+            "x",
+            "y",
+            "z",
+            "inicio",
+            "fim"
+        ].forEach(id => {
+            const campo = document.getElementById(id);
+            campo.addEventListener("input", invalidarCalculo);
+            campo.addEventListener("change", invalidarCalculo);
+        });
+
+        atualizarDimensao();
+    </script>
+
+</body>
+</html>

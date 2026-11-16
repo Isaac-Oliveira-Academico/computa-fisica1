@@ -422,54 +422,415 @@ elif acao == "comparar":
 resultado_json = json.dumps(resultado, ensure_ascii=False)
 `;
 
+
+const PYTHON_VETORIAL_ENGINE = String.raw`
+import json
+import math
+import numpy as np
+import sympy as sp
+
+from computa.cinematica.movimento import MovimentoVetorial
+from computa.cinematica.analise import AnaliseMovimento
+from computa.cinematica.eventos import EventosMovimento
+
+payload = json.loads(payload_vetorial_json)
+
+x = payload.get("x", "")
+y = payload.get("y", "")
+z = payload.get("z")
+nome = payload.get("nome", "Partícula")
+
+if not isinstance(x, str) or not x.strip():
+    raise ValueError("Informe a função da posição no eixo x.")
+
+if not isinstance(y, str) or not y.strip():
+    raise ValueError("Informe a função da posição no eixo y.")
+
+if z is not None and (not isinstance(z, str) or not z.strip()):
+    z = None
+
+t_inicial = float(payload.get("t_inicial", 0))
+t_final = float(payload.get("t_final", 10))
+
+if not math.isfinite(t_inicial) or not math.isfinite(t_final):
+    raise ValueError("Os limites de tempo devem ser números finitos.")
+
+if t_final <= t_inicial:
+    raise ValueError("O tempo final deve ser maior que o inicial.")
+
+pontos_grafico = int(payload.get("pontos_grafico", 301))
+amostras_integracao = int(payload.get("amostras_integracao", 501))
+
+if not 51 <= pontos_grafico <= 1001:
+    raise ValueError("A quantidade de pontos do gráfico deve estar entre 51 e 1001.")
+
+if not 101 <= amostras_integracao <= 2001:
+    raise ValueError("A quantidade de amostras de integração deve estar entre 101 e 2001.")
+
+movimento = MovimentoVetorial(
+    x=x,
+    y=y,
+    z=z,
+    t_inicial=t_inicial,
+    t_final=t_final,
+    nome=nome,
+)
+
+analise = AnaliseMovimento(movimento)
+eventos = EventosMovimento(movimento)
+
+def analisar_com_seguranca(funcao):
+    try:
+        return {
+            "disponivel": True,
+            "dados": funcao(),
+            "mensagem": "",
+        }
+    except NotImplementedError as erro:
+        return {
+            "disponivel": False,
+            "dados": None,
+            "mensagem": str(erro),
+        }
+
+resumo = analise.resumo_intervalo(
+    movimento.t_inicial,
+    movimento.t_final,
+    amostras=amostras_integracao,
+)
+
+eventos_eixo = analisar_com_seguranca(
+    eventos.eventos_por_eixo
+)
+
+eventos_repouso = analisar_com_seguranca(
+    eventos.eventos_repouso
+)
+
+extremos_rapidez = analisar_com_seguranca(
+    eventos.extremos_rapidez
+)
+
+eixos = movimento.eixos
+
+tempos = np.linspace(
+    movimento.t_inicial,
+    movimento.t_final,
+    pontos_grafico,
+)
+
+amostras = {
+    "tempo": [],
+    "posicao": {eixo: [] for eixo in eixos},
+    "velocidade": {eixo: [] for eixo in eixos},
+    "aceleracao": {eixo: [] for eixo in eixos},
+    "rapidez": [],
+    "modulo_aceleracao": [],
+}
+
+for instante in tempos:
+    estado = movimento.avaliar(float(instante))
+
+    amostras["tempo"].append(float(instante))
+    amostras["rapidez"].append(estado["rapidez"])
+    amostras["modulo_aceleracao"].append(
+        estado["modulo_aceleracao"]
+    )
+
+    for indice, eixo in enumerate(eixos):
+        amostras["posicao"][eixo].append(
+            estado["posicao"][indice]
+        )
+        amostras["velocidade"][eixo].append(
+            estado["velocidade"][indice]
+        )
+        amostras["aceleracao"][eixo].append(
+            estado["aceleracao"][indice]
+        )
+
+estado_inicial = movimento.avaliar(movimento.t_inicial)
+estado_final = movimento.avaliar(movimento.t_final)
+
+resultado = {
+    "ok": True,
+    "tipo_operacao": "vetorial",
+    "nome": movimento.nome,
+    "dimensao": movimento.dimensao,
+    "eixos": list(eixos),
+    "t_inicial": movimento.t_inicial,
+    "t_final": movimento.t_final,
+
+    "expressoes": {
+        "posicao": {
+            eixo: str(sp.factor(movimento.posicao[eixo]))
+            for eixo in eixos
+        },
+        "velocidade": {
+            eixo: str(sp.factor(movimento.velocidade[eixo]))
+            for eixo in eixos
+        },
+        "aceleracao": {
+            eixo: str(sp.factor(movimento.aceleracao[eixo]))
+            for eixo in eixos
+        },
+    },
+
+    "estado_inicial": estado_inicial,
+    "estado_final": estado_final,
+    "resumo": resumo,
+
+    "eventos_por_eixo": eventos_eixo,
+    "eventos_repouso": eventos_repouso,
+    "extremos_rapidez": extremos_rapidez,
+
+    "amostras": amostras,
+}
+
+resultado_json_vetorial = json.dumps(
+    resultado,
+    ensure_ascii=False,
+    allow_nan=False,
+)
+`;
+
+const ARQUIVOS_COMPUTA = [
+    "python/computa/__init__.py",
+    "python/computa/core/__init__.py",
+    "python/computa/core/expressao.py",
+    "python/computa/cinematica/__init__.py",
+    "python/computa/cinematica/movimento.py",
+    "python/computa/cinematica/analise.py",
+    "python/computa/cinematica/eventos.py",
+    "python/computa/dinamica/__init__.py",
+];
+
+async function carregarPacoteComputa() {
+    const raizPython = "/home/pyodide";
+
+    pyodide.FS.mkdirTree(`${raizPython}/computa/core`);
+    pyodide.FS.mkdirTree(`${raizPython}/computa/cinematica`);
+    pyodide.FS.mkdirTree(`${raizPython}/computa/dinamica`);
+
+    for (const caminhoRelativo of ARQUIVOS_COMPUTA) {
+        const url = new URL(caminhoRelativo, self.location.href);
+        const resposta = await fetch(url);
+
+        if (!resposta.ok) {
+            throw new Error(
+                `Falha ao carregar ${caminhoRelativo}: HTTP ${resposta.status}`
+            );
+        }
+
+        const codigo = await resposta.text();
+        const caminhoDestino = `${raizPython}/${caminhoRelativo.replace("python/", "")}`;
+
+        pyodide.FS.writeFile(
+            caminhoDestino,
+            new TextEncoder().encode(codigo)
+        );
+    }
+
+    await pyodide.runPythonAsync(`
+import sys
+if "/home/pyodide" not in sys.path:
+    sys.path.insert(0, "/home/pyodide")
+
+import computa
+from computa.cinematica.movimento import MovimentoVetorial
+from computa.cinematica.analise import AnaliseMovimento
+from computa.cinematica.eventos import EventosMovimento
+    `);
+}
+
 async function inicializar() {
     try {
-        postMessage({ tipo: "status", mensagem: "Carregando Python no navegador..." });
+        postMessage({
+            tipo: "status",
+            mensagem: "Carregando Python no navegador..."
+        });
+
         importScripts(PYODIDE_URL);
-        pyodide = await loadPyodide({ indexURL: PYODIDE_INDEX });
-        postMessage({ tipo: "status", mensagem: "Carregando SymPy..." });
+
+        pyodide = await loadPyodide({
+            indexURL: PYODIDE_INDEX
+        });
+
+        postMessage({
+            tipo: "status",
+            mensagem: "Carregando SymPy e NumPy..."
+        });
+
         await pyodide.loadPackage("sympy");
+        await pyodide.loadPackage("numpy");
+
+        postMessage({
+            tipo: "status",
+            mensagem: "Carregando motor vetorial COMPUTA..."
+        });
+
+        await carregarPacoteComputa();
+
         pronto = true;
-        postMessage({ tipo: "ready" });
+
+        postMessage({
+            tipo: "ready"
+        });
+
     } catch (erro) {
         postMessage({
             tipo: "fatal",
-            mensagem: "Não foi possível inicializar o motor Python/SymPy.",
+            mensagem: "Não foi possível inicializar o motor Python do COMPUTA.",
             detalhe: String(erro)
         });
     }
 }
 
+function extrairMensagemErro(erro, fallback) {
+    const linhas = String(erro)
+        .split("\n")
+        .map(linha => linha.trim())
+        .filter(Boolean);
+
+    if (!linhas.length) {
+        return fallback;
+    }
+
+    return linhas[linhas.length - 1]
+        .replace(/^EntradaComplexaError:\s*/, "")
+        .replace(/^ValueError:\s*/, "")
+        .replace(/^NotImplementedError:\s*/, "")
+        .replace(/^Error:\s*/, "")
+        .trim() || fallback;
+}
+
 async function executarCalculo(id, payload) {
     if (!pronto || !pyodide) {
-        postMessage({ tipo: "erro", id, mensagem: "O motor de cálculo ainda não está pronto." });
+        postMessage({
+            tipo: "erro",
+            id,
+            mensagem: "O motor de cálculo ainda não está pronto."
+        });
         return;
     }
+
     try {
-        pyodide.globals.set("payload_json", JSON.stringify(payload));
+        pyodide.globals.set(
+            "payload_json",
+            JSON.stringify(payload)
+        );
+
         await pyodide.runPythonAsync(PYTHON_ENGINE);
+
         const resultadoJson = pyodide.globals.get("resultado_json");
-        postMessage({ tipo: "resultado", id, dados: JSON.parse(resultadoJson) });
+
+        postMessage({
+            tipo: "resultado",
+            id,
+            dados: JSON.parse(resultadoJson)
+        });
+
     } catch (erro) {
         const texto = String(erro);
-        let mensagem = "Não foi possível interpretar ou resolver os dados fornecidos.";
-        if (texto.includes("EntradaComplexaError") || texto.includes("ValueError")) {
-            const linhas = texto.split("\n").map(linha => linha.trim()).filter(Boolean);
-            mensagem = linhas[linhas.length - 1]
-                .replace("EntradaComplexaError:", "")
-                .replace("ValueError:", "")
-                .trim();
-        }
-        postMessage({ tipo: "erro", id, mensagem, detalhe: texto });
+
+        postMessage({
+            tipo: "erro",
+            id,
+            mensagem: extrairMensagemErro(
+                texto,
+                "Não foi possível interpretar ou resolver os dados fornecidos."
+            ),
+            detalhe: texto
+        });
     }
 }
 
-onmessage = async event => {
-    const mensagem = event.data;
-    if (!mensagem || mensagem.tipo !== "calcular") {
+async function executarCalculoVetorial(id, payload) {
+    if (!pronto || !pyodide) {
+        postMessage({
+            tipo: "erro",
+            id,
+            mensagem: "O motor vetorial ainda não está pronto."
+        });
         return;
     }
-    await executarCalculo(mensagem.id, mensagem.payload);
+
+    try {
+        pyodide.globals.set(
+            "payload_vetorial_json",
+            JSON.stringify(payload)
+        );
+
+        await pyodide.runPythonAsync(PYTHON_VETORIAL_ENGINE);
+
+        const resultadoJson = pyodide.globals.get(
+            "resultado_json_vetorial"
+        );
+
+        postMessage({
+            tipo: "resultado",
+            id,
+            dados: JSON.parse(resultadoJson)
+        });
+
+    } catch (erro) {
+        const texto = String(erro);
+
+        postMessage({
+            tipo: "erro",
+            id,
+            mensagem: extrairMensagemErro(
+                texto,
+                "Não foi possível calcular o movimento vetorial."
+            ),
+            detalhe: texto
+        });
+    }
+}
+
+/*
+ * Uma fila única evita que duas operações alterem simultaneamente
+ * as variáveis globais compartilhadas pelo Pyodide.
+ */
+let filaExecucao = Promise.resolve();
+
+onmessage = event => {
+    const mensagem = event.data;
+
+    if (!mensagem || !mensagem.id || !mensagem.payload) {
+        return;
+    }
+
+    if (
+        mensagem.tipo !== "calcular"
+        && mensagem.tipo !== "calcular_vetorial"
+    ) {
+        return;
+    }
+
+    const tarefa = async () => {
+        if (mensagem.tipo === "calcular") {
+            await executarCalculo(
+                mensagem.id,
+                mensagem.payload
+            );
+        } else {
+            await executarCalculoVetorial(
+                mensagem.id,
+                mensagem.payload
+            );
+        }
+    };
+
+    filaExecucao = filaExecucao
+        .then(tarefa)
+        .catch(erro => {
+            postMessage({
+                tipo: "erro",
+                id: mensagem.id,
+                mensagem: "Falha inesperada na fila de cálculo.",
+                detalhe: String(erro)
+            });
+        });
 };
 
 inicializar();
