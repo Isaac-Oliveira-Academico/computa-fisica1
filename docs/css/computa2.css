@@ -1,0 +1,321 @@
+* {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: system-ui, sans-serif;
+            max-width: 1200px;
+            margin: 25px auto;
+            padding: 18px;
+            background: #f4f6f8;
+            color: #20252b;
+        }
+
+        h1, h2, h3 {
+            margin-top: 0;
+        }
+
+        .painel {
+            background: white;
+            padding: 22px;
+            border-radius: 12px;
+            margin: 18px 0;
+            border: 1px solid #ddd;
+        }
+
+        .campo {
+            margin: 14px 0;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 11px;
+            border: 1px solid #bbb;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+
+        button {
+            padding: 11px 17px;
+            margin: 5px 5px 5px 0;
+            border: 0;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 15px;
+            background: #e2e7ed;
+        }
+
+        button.principal {
+            background: #1769aa;
+            color: white;
+            font-weight: 700;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .grade {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .graficos {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 18px;
+        }
+
+        .grafico {
+            width: 100%;
+            min-height: 390px;
+        }
+
+        .status {
+            font-weight: 700;
+            padding: 12px;
+            background: #e9eef4;
+            border-radius: 6px;
+        }
+
+        .ajuda {
+            color: #555;
+            font-size: 14px;
+        }
+
+        #resultado {
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            line-height: 1.6;
+        }
+
+        .controles {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .tempo-atual {
+            font-size: 18px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .estado-atual {
+            padding: 15px;
+            background: #eef4fa;
+            border-radius: 8px;
+            line-height: 1.8;
+            overflow-wrap: anywhere;
+        }
+
+        details {
+            margin-top: 20px;
+        }
+
+        details pre {
+            background: #171717;
+            color: #eee;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            font-size: 12px;
+        }
+
+        @media (max-width: 650px) {
+            body {
+                padding: 10px;
+            }
+
+            .grade {
+                grid-template-columns: 1fr;
+            }
+
+            .controles {
+                grid-template-columns: 1fr;
+            }
+
+            .grafico {
+                min-height: 330px;
+            }
+
+            .painel {
+                padding: 15px;
+            }
+        }
+
+
+/* Identidade visual COMPUTA — tema escuro */
+body {
+    color: var(--texto);
+    background: var(--fundo);
+}
+
+.painel {
+    color: var(--texto);
+    background: var(--painel);
+    border-color: var(--borda);
+    box-shadow: var(--sombra);
+}
+
+label, h1, h2, h3 {
+    color: var(--texto);
+}
+
+input, select {
+    color: var(--texto);
+    background: #101d2e;
+    border-color: var(--borda-forte);
+    min-height: 44px;
+    font: inherit;
+}
+
+button {
+    color: var(--texto);
+    background: #26364d;
+    border: 1px solid var(--borda-forte);
+    min-height: 44px;
+    touch-action: manipulation;
+}
+
+button:hover:not(:disabled) {
+    background: #344a65;
+}
+
+button.principal {
+    color: #101827;
+    background: var(--azul);
+    border-color: var(--azul);
+}
+
+button.principal:hover:not(:disabled) {
+    background: var(--azul-hover);
+}
+
+.status {
+    color: var(--texto);
+    background: #26364d;
+}
+
+.ajuda {
+    color: var(--texto-secundario);
+}
+
+.estado-atual {
+    color: var(--texto);
+    background: #142f3b;
+    border: 1px solid #285c55;
+}
+
+details pre {
+    color: var(--texto);
+    background: #0b1421;
+    border: 1px solid var(--borda);
+}
+
+.grafico {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.graficos {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.grade {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.controles {
+    grid-template-columns: minmax(0, 1fr) auto;
+}
+
+#resultado {
+    color: var(--texto);
+}
+
+@media (max-width: 700px) {
+    body {
+        margin: 0 auto;
+        padding: 12px;
+    }
+
+    .grade,
+    .controles {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .painel {
+        padding: 16px;
+        margin: 14px 0;
+    }
+
+    .grafico {
+        min-height: 300px;
+    }
+
+    .tempo-atual {
+        white-space: normal;
+    }
+
+    button {
+        max-width: 100%;
+    }
+}
+
+@media (max-width: 380px) {
+    body {
+        padding: 8px;
+    }
+
+    .painel {
+        padding: 12px;
+    }
+
+    .grafico {
+        min-height: 260px;
+    }
+}
+
+
+/* Estados de exibição e organização dos controles */
+[hidden] {
+    display: none !important;
+}
+
+.acoes-animacao {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 12px 0;
+}
+
+#visualizar-trajetoria {
+    margin-top: 18px;
+}
+
+#painel-visualizacao {
+    scroll-margin-top: 16px;
+}
+
+@media (max-width: 520px) {
+    .acoes-animacao {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .acoes-animacao button {
+        width: 100%;
+        margin: 0;
+    }
+}
