@@ -84,7 +84,7 @@ class MovimentoVetorial:
 
         return t
 
-    
+
     def _avaliar_vetor(self, expressoes, t):
         valores = []
 
@@ -196,7 +196,7 @@ class MovimentoVetorial:
 
         return float(np.trapezoid(rapidez, tempos))
 
-    
+
     def instantes_repouso(self):
         """
         Identifica os instantes em que todas as componentes da
@@ -257,4 +257,3 @@ class MovimentoVetorial:
                 resultados.append(valor)
 
         return sorted(resultados)
-
