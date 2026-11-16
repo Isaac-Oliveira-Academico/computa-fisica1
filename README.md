@@ -1,91 +1,257 @@
-# COMPUTA — Solver Educacional de Cinemática 1D
+# COMPUTA — Solver Educacional de Cinemática
 
-Projeto desenvolvido para a disciplina de **Métodos Computacionais — Física I (UFCAT)**.
+**Versão pública estável: 2.0.1**
 
-**Autor:** Isaac Oliveira  
-**Referência didática principal:** Halliday, Resnick e Walker — *Fundamentos de Física*, 10ª edição, Volume 1, Capítulo 2 — Movimento Retilíneo.
+Projeto acadêmico desenvolvido no contexto da disciplina de Métodos Computacionais do curso de Física da Universidade Federal de Catalão (UFCAT).
 
-## 1. Objetivo
+O COMPUTA é um solver educacional que auxilia estudantes na modelagem e análise matemática de problemas de cinemática. O projeto combina um motor matemático em Python com interfaces web executadas diretamente no navegador.
 
-O COMPUTA é um solver educacional de cinemática unidimensional. A proposta é que o estudante interprete o problema físico e informe o modelo/dados; o programa executa a parte matemática, apresenta resultados e permite análises de posição, velocidade e aceleração.
+## 1. Acesse o COMPUTA
 
-O projeto possui duas interfaces:
+**Aplicação pública:**
 
-- **Terminal Python (CLI):** interface mais completa no estado atual.
-- **Web:** interface pública para uso direto no navegador, com um subconjunto das funcionalidades do motor Python.
-
-## 2. Links
-
-**Repositório:**  
-https://github.com/Isaac-Oliveira-Academico/computa-fisica1
-
-**Aplicação Web:**  
 https://isaac-oliveira-academico.github.io/computa-fisica1/
 
-**Snapshot funcional auditado:** commit `7d94326` (`web-v1.1`).
+**Repositório:**
 
-> Para uma entrega acadêmica reprodutível, recomenda-se criar uma tag específica da entrega após a inclusão deste README.
+https://github.com/Isaac-Oliveira-Academico/computa-fisica1
 
-## 3. O que o COMPUTA resolve atualmente
+A aplicação web é gratuita e pode ser utilizada diretamente pelo navegador, sem instalação local de Python.
 
-### 3.1 Terminal Python
+Na página inicial, o estudante seleciona a versão da ferramenta:
 
-O motor Python permite trabalhar com:
+- **COMPUTA 1.1:** interface anterior, preservada para compatibilidade.
+- **COMPUTA 2.0:** nova interface para análise de movimento vetorial em duas ou três dimensões.
 
-- MUV numérico com as grandezas `x0`, `x`, `v0`, `v`, `a` e `t`;
-- função conhecida `x(t)`, `v(t)` ou `a(t)`;
-- derivação e integração simbólica com SymPy;
-- condições iniciais quando a entrada é `v(t)` ou `a(t)`;
-- movimento por trechos (Piecewise) informado analiticamente;
-- avaliação de `x`, `v` e `a` em um instante;
-- instantes em que posição, velocidade ou aceleração assumem determinado valor;
-- instantes em que a partícula para (`v(t)=0`);
-- máximos e mínimos de posição e velocidade;
-- deslocamento e velocidade média;
-- aceleração média;
-- distância total e velocidade escalar média;
-- intervalos de sinal de velocidade e aceleração;
-- comparação entre duas partículas;
-- gráficos de posição, velocidade e aceleração.
+## 2. Objetivo acadêmico
 
-### 3.2 Interface Web V1.1
+O objetivo do COMPUTA é apoiar o estudo de Física por meio da resolução matemática e da visualização de movimentos.
 
-A interface Web permite, a partir de uma função posição `x(t)`:
+O estudante informa as funções que representam a posição da partícula em função do tempo. O motor calcula simbolicamente as derivadas necessárias e permite analisar o comportamento cinemático do sistema.
 
-- obter `v(t)` e `a(t)`;
-- avaliar o estado em um instante;
-- localizar valores de posição, velocidade e aceleração;
-- localizar paradas (`v=0`);
-- calcular extremos de posição e velocidade;
-- calcular deslocamento, velocidade média e aceleração média;
-- calcular distância total e velocidade escalar média;
-- analisar sinais de `v(t)` e `a(t)`;
-- comparar duas partículas em operações suportadas;
-- gerar gráficos de `x(t)`, `v(t)` e `a(t)`;
-- executar cálculos simbólicos em Web Worker, com cancelamento e proteção contra expressões excessivamente complexas.
+A ferramenta busca integrar:
 
-## 4. O que ainda não resolve / limitações conhecidas
+- modelagem matemática;
+- cálculo simbólico;
+- análise de grandezas físicas;
+- identificação de eventos do movimento;
+- visualização gráfica;
+- interpretação física dos resultados.
 
-O projeto **não deve ser considerado um solver completo de todo o Capítulo 2 do Halliday**. A cobertura ainda está sendo auditada exercício por exercício.
+O software é uma ferramenta de apoio didático. A escolha do modelo físico, a interpretação dos resultados e a validação das hipóteses continuam sendo responsabilidade do estudante.
 
-Limitações atuais relevantes:
+## 3. Funcionalidades da versão 2.0
 
-- a Web ainda não aceita `v(t)` ou `a(t)` como entrada principal;
-- a Web ainda não possui interface para MUV numérico;
-- a Web ainda não possui construtor visual de movimentos por trechos (Piecewise);
-- gráficos e tabelas ainda não podem ser usados diretamente como entrada;
-- um gráfico `v(t)` precisa ser interpretado pelo usuário e convertido em funções por trechos antes de ser tratado pelo motor Python;
-- domínio físico e domínio matemático de `x(t)`, `v(t)` e `a(t)` ainda não estão completamente separados;
-- singularidades, como `x(t)=1/(t-1)`, ainda exigem cuidado: o sistema pode não segmentar automaticamente o domínio de forma adequada;
-- conversão automática e análise dimensional de unidades ainda não foram implementadas;
-- o escopo atual é cinemática 1D; módulos como vetores e Leis de Newton ainda não estão implementados;
-- a Web e o terminal ainda possuem implementações físicas duplicadas; a unificação do núcleo é uma refatoração planejada;
-- a Web possui limites heurísticos de complexidade para evitar travamentos do navegador;
-- algumas expressões matematicamente ambíguas ou com ramos complexos podem exigir tratamento adicional.
+A versão 2.0 amplia o escopo da ferramenta para movimentos vetoriais em duas e três dimensões.
 
-## 5. Requisitos
+### 3.1 Modelagem do movimento
 
-O snapshot desta entrega foi testado com **Python 3.13.5**.
+O usuário informa as componentes da posição como funções do tempo:
+
+- `x(t)` — posição no eixo x;
+- `y(t)` — posição no eixo y;
+- `z(t)` — posição no eixo z, opcional.
+
+O sistema permite representar movimentos bidimensionais e tridimensionais dentro do intervalo de tempo informado.
+
+Exemplos de expressões:
+
+```text
+x(t) = 10*t
+y(t) = 20*t - 4.9*t**2
+
+x(t) = 2*cos(t)
+y(t) = 2*sin(t)
+z(t) = 3*t
+```
+
+### 3.2 Grandezas cinemáticas
+
+A partir das funções de posição, o motor calcula simbolicamente:
+
+- vetor posição;
+- vetor velocidade;
+- vetor aceleração;
+- rapidez;
+- módulo da aceleração.
+
+As componentes da velocidade são obtidas pela primeira derivada temporal da posição. As componentes da aceleração são obtidas pela segunda derivada.
+
+### 3.3 Análise do movimento
+
+A aplicação e o motor disponibilizam análises como:
+
+- avaliação da posição, velocidade e aceleração em um instante;
+- deslocamento vetorial entre dois instantes;
+- distância total percorrida, calculada numericamente;
+- velocidade média vetorial;
+- aceleração média vetorial;
+- rapidez média;
+- resumo quantitativo do intervalo analisado.
+
+### 3.4 Identificação de eventos
+
+O motor possui recursos para identificar eventos relevantes:
+
+- zeros das componentes da velocidade;
+- instantes de repouso vetorial;
+- máximos e mínimos locais das coordenadas;
+- extremos locais da rapidez;
+- classificação de eventos por eixo.
+
+É importante distinguir repouso em um eixo de repouso vetorial: uma componente da velocidade pode ser nula sem que a partícula esteja completamente em repouso.
+
+### 3.5 Visualização
+
+A interface web permite visualizar o movimento e seus resultados por meio de gráficos.
+
+Recursos da interface:
+
+- representação da trajetória;
+- gráficos das grandezas cinemáticas;
+- visualização de movimentos em duas dimensões;
+- visualização de movimentos em três dimensões;
+- animação da trajetória;
+- controles de reprodução, pausa e reinício;
+- controle temporal para acompanhar o movimento.
+
+A visualização da trajetória é disponibilizada quando solicitada pelo usuário.
+
+## 4. Exemplos de movimentos
+
+### 4.1 Lançamento oblíquo — movimento 2D
+
+Considere:
+
+```text
+x(t) = 10*t
+y(t) = 20*t - 4.9*t**2
+```
+
+Intervalo de análise:
+
+```text
+t inicial = 0 s
+t final   = 4.081632653 s
+```
+
+O modelo permite analisar a trajetória parabólica, a posição, a velocidade, a aceleração e a altura máxima da partícula.
+
+### 4.2 Movimento helicoidal — movimento 3D
+
+Considere:
+
+```text
+x(t) = 2*cos(t)
+y(t) = 2*sin(t)
+z(t) = 3*t
+```
+
+Intervalo de análise:
+
+```text
+t inicial = 0 s
+t final   = 2*pi s
+```
+
+Esse modelo representa uma trajetória helicoidal, permitindo visualizar a evolução espacial da partícula e suas grandezas cinemáticas.
+
+## 5. Arquitetura técnica
+
+O projeto utiliza uma arquitetura híbrida: o motor matemático é desenvolvido em Python, enquanto a interface pública é executada no navegador.
+
+### 5.1 Motor matemático
+
+Tecnologias principais:
+
+- **Python:** implementação do motor;
+- **SymPy:** manipulação e diferenciação simbólica;
+- **NumPy:** operações e cálculos numéricos;
+- **AST:** interpretação controlada das expressões matemáticas.
+
+O interpretador de expressões aceita operações e funções matemáticas explicitamente permitidas, evitando a execução arbitrária de código Python fornecido pelo usuário.
+
+### 5.2 Execução no navegador
+
+A versão 2.0 utiliza:
+
+- **HTML:** estrutura das interfaces;
+- **CSS:** apresentação visual;
+- **JavaScript:** interação e integração da aplicação;
+- **Pyodide:** execução de Python no navegador;
+- **Web Worker:** processamento do motor em uma thread separada;
+- **Plotly.js:** gráficos e visualizações.
+
+Os módulos Python do motor são disponibilizados na estrutura pública do GitHub Pages e carregados pelo Worker durante a execução.
+
+Assim, o usuário não precisa instalar Python, SymPy ou NumPy para utilizar a aplicação web.
+
+### 5.3 Separação entre fonte e distribuição
+
+O código Python oficial fica em `computa/`.
+
+A cópia destinada à execução no navegador fica em `docs/python/computa/` e é gerada pelo script:
+
+```bash
+python scripts/build_web.py
+```
+
+A cópia publicada não deve ser editada manualmente. Alterações no motor devem ser feitas na fonte e depois reproduzidas pelo processo de build.
+
+## 6. Estrutura do repositório
+
+```text
+computa-fisica1/
+│
+├── computa/
+│   ├── __init__.py
+│   ├── core/
+│   │   └── expressao.py
+│   ├── cinematica/
+│   │   ├── movimento.py
+│   │   ├── analise.py
+│   │   └── eventos.py
+│   └── dinamica/
+│
+├── core/
+├── modulos/
+│
+├── docs/
+│   ├── index.html
+│   ├── computa1.html
+│   ├── computa2.html
+│   ├── app.js
+│   ├── worker.js
+│   ├── style.css
+│   ├── css/
+│   └── python/
+│       └── computa/
+│
+├── scripts/
+│   └── build_web.py
+│
+├── testes/
+│   └── cinematica/
+│
+├── resultados/
+├── main.py
+├── requirements.txt
+└── README.md
+```
+
+Os diretórios `core/` e `modulos/` preservam componentes da implementação anterior. A versão vetorial reorganizada utiliza o pacote `computa/`.
+
+## 7. Instalação para desenvolvimento local
+
+A instalação local é necessária apenas para quem deseja desenvolver, executar testes ou trabalhar diretamente com o motor Python.
+
+### Requisitos
+
+Ambiente de desenvolvimento validado:
+
+- Python 3.12.3;
+- pip;
+- Git.
 
 Dependências declaradas em `requirements.txt`:
 
@@ -95,157 +261,167 @@ matplotlib
 sympy
 ```
 
-Outras versões recentes do Python podem funcionar, mas não foram validadas nesta entrega.
-
-## 6. Instalação local
-
 ### Linux / macOS
 
 ```bash
 git clone https://github.com/Isaac-Oliveira-Academico/computa-fisica1.git
+
 cd computa-fisica1
 
 python3 -m venv .venv
+
 source .venv/bin/activate
 
-python3 -m pip install --upgrade pip
-python3 -m pip install -r requirements.txt
+python -m pip install --upgrade pip
 
-python3 main.py
+python -m pip install -r requirements.txt
 ```
 
-### Windows (PowerShell)
+### Windows — PowerShell
 
 ```powershell
 git clone https://github.com/Isaac-Oliveira-Academico/computa-fisica1.git
+
 cd computa-fisica1
 
 py -m venv .venv
+
 .\.venv\Scripts\Activate.ps1
 
 python -m pip install --upgrade pip
+
 python -m pip install -r requirements.txt
-
-python main.py
 ```
 
-## 7. Como testar rapidamente pelo terminal
+## 8. Build dos módulos para a aplicação web
 
-Execute:
+Depois de modificar o motor Python, gere novamente os módulos destinados ao navegador:
 
 ```bash
-python3 main.py
+python scripts/build_web.py
 ```
 
-Escolha:
+O script copia os módulos da fonte `computa/` para `docs/python/computa/`, preservando a organização dos pacotes Python.
 
-```text
-1 — Cinemática 1D
-2 — Uma função x(t), v(t) ou a(t)
-x — Posição x(t)
-```
-
-Use o exemplo:
-
-```text
-x(t) = 3*t - 4*t**2 + t**3
-Tempo inicial = 0
-Tempo final = 4
-```
-
-Resultados de referência:
-
-```text
-x(1) = 0 m
-x(2) = -2 m
-x(4) = 12 m
-
-v(t) = 3 - 8*t + 3*t**2
-a(t) = -8 + 6*t
-
-deslocamento de 0 a 4 s = 12 m
-velocidade média de 2 a 4 s = 7 m/s
-aceleração média de 2 a 4 s = 10 m/s²
-
-v(t)=0 em aproximadamente:
-t = 0.4514 s
-t = 2.2153 s
-```
-
-Esse caso corresponde ao tipo de questão usado na avaliação da disciplina e pode ser utilizado como teste de aceitação.
-
-## 8. Exemplo de limitação: entrada por gráfico
-
-Um problema fornecido apenas por gráfico `v(t)` ainda não pode ser inserido diretamente na interface Web.
-
-No terminal Python, o usuário pode primeiro interpretar o gráfico e convertê-lo em funções por trechos. Por exemplo:
-
-```text
-v(t) = 2*t         para 0 <= t <= 2
-v(t) = 4           para 2 <= t <= 4
-v(t) = 12 - 2*t    para 4 <= t <= 6
-```
-
-Depois disso, o motor Piecewise pode analisar o movimento. A interpretação automática do gráfico ainda não está implementada.
-
-## 9. Testes automatizados
-
-A entrega possui duas suítes simples de testes.
-
-Execute:
+Depois do build, confira as alterações:
 
 ```bash
-python3 testes/test_smoke.py
-python3 testes/test_capitulo2.py
+git status --short
+
+git diff --check
 ```
 
-No snapshot auditado, os testes retornam sucesso para:
+## 9. Testes e validação
 
-```text
-MUV numérico
-cinemática simbólica
-comparação entre duas partículas
-validação de dados incompatíveis
-Halliday 2.20 — raízes de v(t) e a(t)
-Halliday 2.18 — extremos e velocidade média
-distância total com inversão de movimento
-Halliday 2.21 — Piecewise
-intervalos de sinal de v(t) e a(t)
-```
+O projeto possui testes automatizados para verificar o comportamento do motor e evitar regressões.
 
-Também pode ser feita uma verificação de sintaxe Python:
+### Testes da cinemática vetorial
 
 ```bash
-python3 -m py_compile main.py core/*.py modulos/*.py testes/*.py
+python -m unittest discover -s testes/cinematica -v
 ```
 
-## 10. Estrutura principal do projeto
+### Testes gerais
 
-```text
-core/
-  entrada.py
-  solver.py
+```bash
+python testes/test_smoke.py
 
-modulos/
-  cinematica.py
-  movimento_1d.py
-  eventos_cinematica.py
-  graficos_cinematica.py
-
-testes/
-  test_smoke.py
-  test_capitulo2.py
-
-docs/
-  index.html
-  app.js
-  style.css
-  worker.js
-
-main.py
-requirements.txt
+python testes/test_capitulo2.py
 ```
 
-## 11. Observação sobre a cobertura do Halliday
+### Verificação de sintaxe
 
-Os testes existentes demonstram que o motor resolve classes importantes de problemas do Capítulo 2, mas **não demonstram cobertura integral do capítulo**. A meta do projeto é manter uma matriz exercício por exercício com os estados `RESOLVE`, `PARCIAL` e `NÃO RESOLVE` e ampliar a suíte de regressão conforme a auditoria avança.
+```bash
+python -m py_compile \
+  computa/core/expressao.py \
+  computa/cinematica/movimento.py \
+  computa/cinematica/analise.py \
+  computa/cinematica/eventos.py
+```
+
+### Verificação de alterações
+
+```bash
+git diff --check
+```
+
+Na validação da versão 2.0, foram aprovados:
+
+- 32 testes da suíte de cinemática;
+- 4 testes de smoke;
+- 5 testes do Capítulo 2;
+- verificação de sintaxe dos módulos;
+- verificação de integridade do diff.
+
+A versão web 2.0.1 também foi testada com movimentos 2D e 3D diretamente na aplicação pública.
+
+## 10. Limitações e escopo atual
+
+O COMPUTA 2.0 é um solver educacional de cinemática vetorial. Não deve ser interpretado como um sistema completo de toda a Mecânica Clássica.
+
+Limitações importantes:
+
+- o escopo vetorial implementado é cinemática em duas e três dimensões;
+- o módulo de dinâmica ainda não implementa um solver completo das Leis de Newton;
+- não se calcula energia mecânica apenas a partir das funções de posição;
+- massa, forças e modelos dinâmicos são necessários para análises de dinâmica;
+- a distância percorrida é obtida por integração numérica da rapidez;
+- algumas equações podem não possuir soluções simbólicas enumeráveis pelo SymPy;
+- singularidades e domínios matemáticos exigem atenção na escolha do intervalo;
+- conversão automática e análise dimensional completa de unidades ainda não estão implementadas;
+- o resultado depende da adequação das funções informadas ao fenômeno físico estudado.
+
+O projeto poderá receber novos módulos e funcionalidades em versões futuras, mas esses recursos não fazem parte da entrega estável 2.0.1.
+
+## 11. Histórico de versões
+
+### V1.1 — versão anterior
+
+- Interface web original;
+- ferramentas de cinemática unidimensional;
+- motor e funcionalidades anteriores preservados em `docs/computa1.html`.
+
+### V2.0.0 — expansão vetorial
+
+- reorganização da arquitetura do projeto;
+- criação do pacote Python `computa/`;
+- motor de cinemática vetorial;
+- análise de movimentos em 2D e 3D;
+- integração do Python com Pyodide e Web Worker;
+- nova interface de seleção de ferramentas;
+- gráficos e animações.
+
+### V2.0.1 — correção de publicação
+
+- inclusão de `docs/.nojekyll`;
+- correção da publicação dos arquivos internos do pacote Python;
+- disponibilização dos módulos `__init__.py` no GitHub Pages;
+- validação HTTP dos arquivos necessários ao carregamento do motor;
+- testes finais de movimentos 2D e 3D na aplicação pública.
+
+**Tag da versão estável:** `computa-v2.0.1`
+
+## 12. Publicação
+
+A aplicação é hospedada pelo GitHub Pages.
+
+Configuração de publicação:
+
+- branch: `main`;
+- diretório: `/docs`;
+- arquivo de entrada: `docs/index.html`;
+- arquivo de configuração: `docs/.nojekyll`.
+
+A publicação da versão 2.0.1 foi concluída com sucesso e os arquivos Python necessários ao motor foram verificados com resposta HTTP 200.
+
+## 13. Autoria e referência acadêmica
+
+**Autor:** Isaac Oliveira  
+**Instituição:** Universidade Federal de Catalão — UFCAT  
+**Área:** Física / Métodos Computacionais
+
+**Referência didática de apoio:**
+
+HALLIDAY, David; RESNICK, Robert; WALKER, Jearl. *Fundamentos de Física*. Volume 1. 10ª edição.
+
+O COMPUTA é um projeto acadêmico de caráter educacional, desenvolvido para apoiar o estudo, a modelagem matemática e a visualização de fenômenos físicos.
